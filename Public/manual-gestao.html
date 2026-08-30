@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual da Gestão - Agenda360</title>
+    <link rel="icon" type="image/png" href="/logo_fav.png">
+    <style>
+        /* 🎨 IMPORTAÇÃO DA NOVA TIPOGRAFIA PREMIUM */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --primary: #00468b;
+            --secondary: #0ea5e9;
+            --bg-color: #F0F4F8; /* Azul subtil pero no mucho */
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --border-soft: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; font-family: 'Outfit', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; padding-bottom: 50px; }
+
+        /* CABEÇALHO HERO COM CANTOS ARREDONDADOS */
+        .hero { 
+            background: linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%); 
+            color: white; 
+            padding: 50px 20px 60px 20px; 
+            text-align: center; 
+            border-radius: 0 0 40px 40px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 70, 139, 0.2); 
+            margin-bottom: 15px;
+        }
+        .hero img { max-height: 70px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .hero h1 { font-size: 2.4rem; margin-bottom: 10px; font-weight: 800; letter-spacing: -0.5px; }
+        .hero p { font-size: 1.05rem; opacity: 0.9; max-width: 600px; margin: 0 auto; font-weight: 400; }
+
+        /* BARRA DE PESQUISA FLUTUANTE */
+        .search-container { max-width: 700px; margin: -40px auto 40px auto; padding: 0 20px; position: relative; z-index: 10; }
+        .search-box { display: flex; align-items: center; background: var(--card-bg); padding: 10px 20px; border-radius: 50px; box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.1); border: 2px solid white; transition: all 0.3s ease; }
+        .search-box:focus-within { border-color: var(--secondary); box-shadow: 0 15px 35px -5px rgba(14, 165, 233, 0.2); transform: translateY(-2px); }
+        .search-box input { flex: 1; border: none; padding: 14px; font-size: 1.05rem; outline: none; color: var(--text-main); background: transparent; font-family: 'Outfit', sans-serif; font-weight: 500; }
+        .search-box input::placeholder { color: #94a3b8; font-weight: 400; }
+        .search-icon { font-size: 1.3rem; color: var(--text-muted); }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+        .category-title { font-size: 1.6rem; font-weight: 800; color: var(--primary); margin: 40px 0 20px 0; padding-bottom: 12px; border-bottom: 2px dashed var(--border-soft); display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px; }
+        
+        /* ACORDEÃO PREMIUM */
+        .faq-list { display: flex; flex-direction: column; gap: 15px; }
+        .faq-item { background: var(--card-bg); border: 1.5px solid var(--border-soft); border-radius: 16px; overflow: hidden; transition: all 0.3s ease; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.02); }
+        .faq-item:hover { border-color: #cbd5e1; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06); transform: translateY(-2px); }
+        .faq-item.active { border-color: var(--secondary); box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.15); transform: translateY(-2px); }
+        
+        .faq-question { padding: 22px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: transparent; border: none; width: 100%; text-align: left; outline: none; transition: color 0.2s; }
+        .faq-question::after { content: '+'; font-size: 1.8rem; color: var(--secondary); font-weight: 300; transition: transform 0.3s ease; line-height: 1; }
+        
+        .faq-item.active .faq-question { color: var(--primary); }
+        .faq-item.active .faq-question::after { transform: rotate(45deg); }
+        
+        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), padding 0.4s ease; background: transparent; color: #334155; font-size: 0.95rem; }
+        .faq-item.active .faq-answer { max-height: 2000px; padding: 0 22px 22px 22px; border-top: 1px dashed var(--border-soft); margin-top: 5px; padding-top: 15px; }
+
+        .faq-answer p { margin-bottom: 12px; text-align: justify; line-height: 1.7; }
+        .faq-answer ul { margin-left: 20px; margin-bottom: 12px; line-height: 1.7; }
+        .faq-answer li { margin-bottom: 8px; }
+        .faq-answer ol { margin-left: 20px; margin-bottom: 12px; line-height: 1.7; }
+        .highlight { background: #e0f2fe; padding: 3px 8px; border-radius: 6px; color: var(--secondary); font-weight: 700; font-size: 0.9em; }
+        .badge-warning { background: #fffbeb; color: #b45309; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 0.9em; border: 1px solid #fcd34d; }
+        
+        .no-results { text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; font-weight: 500; display: none; background: transparent; border: 2px dashed var(--border-soft); border-radius: 16px; }
+        
+        /* BOTÃO VOLTAR/FECHAR */
+        .btn-back { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 35px; padding: 16px 28px; background: var(--card-bg); color: var(--text-main); text-decoration: none; font-weight: 700; font-size: 1.05rem; border-radius: 16px; border: 1.5px solid var(--border-soft); box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); transition: all 0.2s ease; cursor: pointer; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto; }
+        .btn-back:hover { background: var(--danger); color: white; border-color: var(--danger); transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.3); }
+
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 2rem; }
+            .search-box input { font-size: 1rem; }
+            .faq-question { font-size: 1.05rem; padding: 18px; }
+            .category-title { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="hero">
+        <img src="/logo_agenda_360.jpeg" alt="Agenda360 Logo" onerror="this.style.display='none'">
+        <h1>Manual Operacional da Agência</h1>
+        <p>O guia completo e detalhado para os Gestores da Plataforma Agenda360.</p>
+    </header>
+
+    <div class="search-container">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Pesquise por: Excel, Faturação, Agendamento, Validação..." onkeyup="filterFAQs()">
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="noResults" class="no-results">
+            😕 Não encontrámos nenhuma resposta para "<span id="searchTermDisplay"></span>". Tente usar outras palavras!
+        </div>
+
+        <!-- CATEGORIA: CLÍENTES E UNIDADES -->
+        <div class="faq-category">
+            <h2 class="category-title">🏢 Gestão de Clientes e Hotéis</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">Como criar um novo Cliente/Hotel e configurar o GPS?</button>
+                    <div class="faq-answer">
+                        <p>O sistema divide os clientes em duas partes: o <b>Grupo (A Sede/Empresa)</b> e as <b>Unidades (Os Hotéis/Locais físicos)</b>.</p>
+                        <ul>
+                            <li>Vá a <b>Grupos e Unidades</b>.</li>
+                            <li>Primeiro crie o Grupo (Ex: Pestana).</li>
+                            <li>Depois, crie a Unidade associada a esse grupo (Ex: Pestana Palácio do Freixo).</li>
+                        </ul>
+                        <p><b>A Mágica do GPS:</b> Para que os trabalhadores só possam picar o ponto no local exato, preencha a <b>Rua, o Código Postal e a Cidade</b> da Unidade. A seguir, clique no botão azul <span class="highlight">🔍 Buscar GPS por Morada</span>. O satélite preencherá a Latitude e Longitude de forma automática e inviolável.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Para que serve o botão "Exigir Validação do Gestor Local"?</button>
+                    <div class="faq-answer">
+                        <p>É uma camada extra de segurança para a sua faturação (B2B). Se ligar este botão (Toggle Switch) na ficha da Unidade/Hotel, o processo de fecho de turno muda:</p>
+                        <p>Quando o trabalhador pica a saída, o turno não é dado como <span class="highlight">Concluído</span> imediatamente. Ele passa para o estado <span class="badge-warning">⏳ A Aguardar Validação</span>.</p>
+                        <p>O Diretor desse Hotel, através do seu portal de cliente, terá de rever as horas e clicar em <b>Validar Turno</b>. Pode até deixar uma observação escrita (Ex: "Saiu mais cedo por indicação minha"). Só depois desta validação é que o turno fica verde e pronto a faturar.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORIA: ESCALAS -->
+        <div class="faq-category">
+            <h2 class="category-title">📅 Agendamentos, Escalas e Pedidos</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">Como funciona o Agendamento Múltiplo para vários dias?</button>
+                    <div class="faq-answer">
+                        <p>Em vez de criar turnos dia a dia, use a ferramenta de repetição:</p>
+                        <ul>
+                            <li>No separador de <b>Escalas</b>, ligue a opção superior <span class="highlight">Modo de Agendamento Múltiplo</span>.</li>
+                            <li>Escolha uma <b>Data Final (Até)</b> e assinale em que dias da semana (Seg, Ter, Qua...) aquele horário se aplica.</li>
+                            <li>Selecione o Trabalhador, o Local e a Data de Início.</li>
+                        </ul>
+                        <p>Ao gravar, o sistema gera instantaneamente todos os cartões de turno na base de dados, poupando-lhe horas de trabalho manual.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como atendo um Pedido de Equipa feito por um Cliente (Hotel)?</button>
+                    <div class="faq-answer">
+                        <p>Quando um cliente B2B precisa de equipa extra, ele faz o pedido no seu portal. Esse pedido aparece com um alerta no seu <b>Visão Geral (Dashboard)</b> e na aba <b>🛎️ Pedidos de Extras</b>.</p>
+                        <p>Para atender rapidamente:</p>
+                        <ol>
+                            <li>Clique no botão verde <span class="highlight">🪄 Atender Pedido</span> ao lado da solicitação.</li>
+                            <li>O sistema transporta-o para as Escalas, já com o Local, Função, Data e Horário preenchidos automaticamente.</li>
+                            <li>Aparecerá um Banner verde no topo a indicar que está no "Modo de Atendimento".</li>
+                            <li>Basta escolher o <b>Trabalhador</b> e gravar. O sistema fará a contagem e atualizará o estado do pedido (Ex: Em curso 1/3) até estar totalmente preenchido.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como faço o "Acerto Manual" de um turno que correu mal?</button>
+                    <div class="faq-answer">
+                        <p>Se o trabalhador se esquecer de picar o ponto, ou o telemóvel ficar sem bateria, cabe à Agência retificar as horas para a contabilidade não falhar.</p>
+                        <p>Na Lista de Turnos, clique no botão amarelo <b>✎ Acerto</b> do turno respetivo. O ecrã de edição abrirá com uma zona vermelha de <span class="highlight">Acerto Manual</span>. Lá, pode digitar a hora exata da Entrada Real e Saída Real e forçar o estado do turno para "Concluído".</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORIA: FUNCIONÁRIOS E SENHAS -->
+        <div class="faq-category">
+            <h2 class="category-title">👥 Funcionários e Acessos</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">Como importo dezenas de funcionários via Excel?</button>
+                    <div class="faq-answer">
+                        <p>No separador <b>Funcionários</b>, use a barra verde no topo:</p>
+                        <ol>
+                            <li>Clique em <span class="highlight">📥 1. Descarregar Modelo</span>. O sistema baixa um ficheiro CSV limpo.</li>
+                            <li>Abra o Excel, preencha os nomes, NIFs (obrigatório), emails e telefones seguindo as colunas exatas.</li>
+                            <li>Clique em <span class="highlight">📤 2. Fazer Upload do Ficheiro Preenchido</span> e selecione o ficheiro. O sistema regista todos os trabalhadores em menos de 1 segundo.</li>
+                        </ol>
+                        <p><i>Nota: Por defeito, a primeira senha provisória de um trabalhador importado será igual ao seu número de NIF.</i></p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como crio um acesso (Login) para o Diretor do Hotel?</button>
+                    <div class="faq-answer">
+                        <p>Vá a <b>Acessos da Empresa</b>. Na zona de criação de Gestor:</p>
+                        <ul>
+                            <li>Preencha o Nome e E-mail do diretor.</li>
+                            <li>No campo <b>Unidade Alocada</b>, selecione o Hotel correspondente (Ex: Pestana Freixo).</li>
+                        </ul>
+                        <p>Este pormenor é crítico! Se selecionar uma Unidade, esse login transforma-se num <b>Portal B2B (Cliente)</b>. Ele apenas conseguirá ver os turnos do seu hotel, pedir equipa e validar horas, ficando totalmente cego aos dados privados da sua Agência.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CATEGORIA: RELATÓRIOS E CONTABILIDADE -->
+        <div class="faq-category">
+            <h2 class="category-title">📊 Relatórios, Contabilidade e Assinaturas</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <button class="faq-question">Qual a diferença entre a "Lista de Turnos" e a "Folha Mensal (31 Dias)"?</button>
+                    <div class="faq-answer">
+                        <p>No separador <b>Relatórios e Fecho</b>, depois de usar os filtros, tem dois botões de visualização distintos:</p>
+                        <p>👉 <b>Lista de Turnos (Visão Operacional):</b> Mostra apenas os turnos que aconteceram no período selecionado, empilhados uns por baixo dos outros. Excelente para verificar faltas e atrasos diários do cliente.</p>
+                        <p>👉 <b>Folha Mensal de 31 Dias (Visão Contabilidade):</b> Exige que filtre por um único trabalhador e data específica. O sistema constrói a Grelha Oficial do mês completo (do dia 1 ao 30/31). Preenche os turnos trabalhados, assinala os dias de folga a cinzento e totaliza as horas. É este o formato que deve Exportar para Excel para enviar ao contabilista.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como funcionam as pausas no cálculo das horas efetivas?</button>
+                    <div class="faq-answer">
+                        <p>O motor matemático do sistema é preciso:</p>
+                        <ul>
+                            <li><b>Pausa Programada:</b> Se agendou um turno com 30 min de pausa, o sistema desconta esse tempo automaticamente do cálculo (Hora Saída - Hora Entrada - 30m). Se o trabalhador na App disser que NÃO fez a pausa, a App avisa o sistema e a pausa passa a zero (0), não sendo descontada.</li>
+                            <li><b>Pausa Não Programada:</b> Se o turno não previa pausa, o desconto é nulo. Mas, se no check-out, o trabalhador disser à App que fez 15m de pausa, o sistema recebe esse dado e abate os 15m no relatório.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como exijo a Assinatura Digital Legal da Folha de Ponto ao Trabalhador?</button>
+                    <div class="faq-answer">
+                        <p>Chegado o final do mês, é obrigatório ter a validação do trabalhador.</p>
+                        <ol>
+                            <li>No separador <b>Relatórios e Fecho</b>, vá à caixa azul de <span class="highlight">Controlo de Assinaturas Digitais</span> no topo.</li>
+                            <li>Selecione o Trabalhador, o Mês e o Ano fechados.</li>
+                            <li>Clique em <b>Enviar Pedido à App</b>.</li>
+                        </ol>
+                        <p>Nesse exato momento, a Folha de Ponto de 31 Dias fica "trancada" e é enviada para o telemóvel do trabalhador com um alerta vermelho. Assim que ele revir e assinar, o sistema gera um Carimbo Criptográfico que prova que a folha foi validada por ele de forma inquestionável.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="window.close()" class="btn-back">⬅ Fechar Manual e Voltar ao Sistema</button>
+    </div>
+
+    <script>
+        document.querySelectorAll('.faq-question').forEach(button => {
+            button.addEventListener('click', () => {
+                const item = button.parentElement;
+                const isActive = item.classList.contains('active');
+                
+                document.querySelectorAll('.faq-item').forEach(faq => {
+                    faq.classList.remove('active');
+                });
+
+                if (!isActive) { item.classList.add('active'); }
+            });
+        });
+
+        function filterFAQs() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase().trim();
+            const categories = document.querySelectorAll('.faq-category');
+            const noResults = document.getElementById('noResults');
+            const searchTermDisplay = document.getElementById('searchTermDisplay');
+            let hasAnyResult = false;
+
+            categories.forEach(category => {
+                const items = category.querySelectorAll('.faq-item');
+                let hasVisibleItem = false;
+
+                items.forEach(item => {
+                    const question = item.querySelector('.faq-question').innerText.toLowerCase();
+                    const answer = item.querySelector('.faq-answer').innerText.toLowerCase();
+
+                    if (question.includes(filter) || answer.includes(filter)) {
+                        item.style.display = 'block';
+                        hasVisibleItem = true;
+                        hasAnyResult = true;
+                    } else {
+                        item.style.display = 'none';
+                        item.classList.remove('active'); 
+                    }
+                });
+
+                category.style.display = hasVisibleItem ? 'block' : 'none';
+            });
+
+            if (!hasAnyResult && filter !== '') {
+                searchTermDisplay.innerText = input.value;
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

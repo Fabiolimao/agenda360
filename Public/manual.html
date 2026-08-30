@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Ajuda - Agenda360</title>
+    <link rel="icon" type="image/png" href="/logo_fav.png">
+    <style>
+        /* 🎨 IMPORTAÇÃO DA NOVA TIPOGRAFIA PREMIUM */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --primary: #00468b;
+            --secondary: #0ea5e9;
+            --bg-color: #F0F4F8; /* Azul subtil pero no mucho */
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --border-soft: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; font-family: 'Outfit', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; padding-bottom: 50px; }
+
+        /* CABEÇALHO HERO COM CANTOS ARREDONDADOS */
+        .hero { 
+            background: linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%); 
+            color: white; 
+            padding: 50px 20px 60px 20px; 
+            text-align: center; 
+            border-radius: 0 0 40px 40px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 70, 139, 0.2); 
+            margin-bottom: 15px;
+        }
+        .hero img { max-height: 70px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 10px; font-weight: 800; letter-spacing: -0.5px; }
+        .hero p { font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto; font-weight: 400; }
+
+        /* BARRA DE PESQUISA FLUTUANTE */
+        .search-container { max-width: 700px; margin: -40px auto 40px auto; padding: 0 20px; position: relative; z-index: 10; }
+        .search-box { display: flex; align-items: center; background: var(--card-bg); padding: 10px 20px; border-radius: 50px; box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.1); border: 2px solid white; transition: all 0.3s ease; }
+        .search-box:focus-within { border-color: var(--secondary); box-shadow: 0 15px 35px -5px rgba(14, 165, 233, 0.2); transform: translateY(-2px); }
+        .search-box input { flex: 1; border: none; padding: 14px; font-size: 1.05rem; outline: none; color: var(--text-main); background: transparent; font-family: 'Outfit', sans-serif; font-weight: 500; }
+        .search-box input::placeholder { color: #94a3b8; font-weight: 400; }
+        .search-icon { font-size: 1.3rem; color: var(--text-muted); }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+        .category-title { font-size: 1.6rem; font-weight: 800; color: var(--primary); margin: 40px 0 20px 0; padding-bottom: 12px; border-bottom: 2px dashed var(--border-soft); display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px; }
+        
+        /* ACORDEÃO PREMIUM */
+        .faq-list { display: flex; flex-direction: column; gap: 15px; }
+        .faq-item { background: var(--card-bg); border: 1.5px solid var(--border-soft); border-radius: 16px; overflow: hidden; transition: all 0.3s ease; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.02); }
+        .faq-item:hover { border-color: #cbd5e1; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06); transform: translateY(-2px); }
+        .faq-item.active { border-color: var(--secondary); box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.15); transform: translateY(-2px); }
+        
+        .faq-question { padding: 22px; font-size: 1.15rem; font-weight: 700; color: var(--text-main); cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: transparent; border: none; width: 100%; text-align: left; outline: none; transition: color 0.2s; }
+        .faq-question::after { content: '+'; font-size: 1.8rem; color: var(--secondary); font-weight: 300; transition: transform 0.3s ease; line-height: 1; }
+        
+        .faq-item.active .faq-question { color: var(--primary); }
+        .faq-item.active .faq-question::after { transform: rotate(45deg); }
+        
+        .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), padding 0.4s ease; background: transparent; color: #334155; font-size: 0.95rem; }
+        .faq-item.active .faq-answer { max-height: 2000px; padding: 0 22px 22px 22px; border-top: 1px dashed var(--border-soft); margin-top: 5px; padding-top: 15px; }
+
+        .faq-answer p { margin-bottom: 12px; text-align: justify; line-height: 1.7; }
+        .faq-answer strong { color: var(--text-main); }
+        .faq-answer ul { margin-left: 20px; margin-bottom: 12px; line-height: 1.7; }
+        .faq-answer li { margin-bottom: 6px; }
+        .faq-answer ol { margin-left: 20px; margin-bottom: 12px; line-height: 1.7; }
+        .highlight { background: #e0f2fe; padding: 3px 8px; border-radius: 6px; color: var(--secondary); font-weight: 700; font-size: 0.9em; }
+        
+        /* ESTADO VAZIO DA PESQUISA */
+        .no-results { text-align: center; padding: 40px; color: var(--text-muted); font-size: 1.1rem; font-weight: 500; display: none; background: transparent; border: 2px dashed var(--border-soft); border-radius: 16px; }
+        
+        /* BOTÃO VOLTAR */
+        .btn-back { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 35px; padding: 16px 28px; background: var(--card-bg); color: var(--text-main); text-decoration: none; font-weight: 700; font-size: 1.05rem; border-radius: 16px; border: 1.5px solid var(--border-soft); box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); transition: all 0.2s ease; cursor: pointer; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto; }
+        .btn-back:hover { background: var(--primary); color: white; border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 70, 139, 0.3); }
+
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 2rem; }
+            .search-box input { font-size: 1rem; }
+            .faq-question { font-size: 1.05rem; padding: 18px; }
+            .category-title { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="hero">
+        <img src="/logo_agenda_360.jpeg" alt="Agenda360 Logo" onerror="this.style.display='none'">
+        <h1>Central de Ajuda</h1>
+        <p>Tudo o que precisa de saber para dominar a plataforma Agenda360. Pesquise abaixo ou navegue pelas categorias.</p>
+    </header>
+
+    <div class="search-container">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Ex: Como picar o ponto? Como aprovar horas?..." onkeyup="filterFAQs()">
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="noResults" class="no-results">
+            😕 Não encontrámos nenhuma resposta para "<span id="searchTermDisplay"></span>". Tente usar outras palavras!
+        </div>
+
+        <!-- CATEGORIA: TRABALHADOR -->
+        <div class="faq-category">
+            <h2 class="category-title">📱 App do Trabalhador</h2>
+            <div class="faq-list">
+                
+                <div class="faq-item">
+                    <button class="faq-question">Como funciona a picagem de ponto por GPS?</button>
+                    <div class="faq-answer">
+                        <p>Para garantir que o registo é válido, a nossa App utiliza o GPS do seu telemóvel no exato momento em que clica em <span class="highlight">Picar Entrada</span> ou <span class="highlight">Picar Saída</span>.</p>
+                        <p>O sistema calcula a sua distância até ao hotel/local de trabalho. Se estiver num raio de <b>50 metros</b>, o ponto é aceite instantaneamente (sinal verde). Se estiver mais longe, a App vai avisá-lo e o seu registo ficará marcado como "Declaração Manual Fora do Raio", sujeito a verificação pelo seu gestor.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Esqueci-me de picar a saída. O que faço agora?</button>
+                    <div class="faq-answer">
+                        <p>Se terminou o seu turno e não registou a saída na aplicação, o seu turno ficará "em aberto" com um alerta vermelho para o seu gestor.</p>
+                        <p><b>A solução:</b> Contacte o seu gestor operacional ou a Agência o mais rápido possível. Apenas o gestor tem permissões para aceder ao Painel Central e fazer o <span class="highlight">Acerto Manual</span> da sua hora de saída para que não perca o pagamento desse tempo.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como declaro as minhas pausas de descanso?</button>
+                    <div class="faq-answer">
+                        <p>Tudo acontece de forma automática no momento de ir embora! Quando clicar em <b>Registar Saída</b>, a App fará uma pergunta simples:</p>
+                        <p>👉 Se o seu turno já tinha uma pausa programada, basta confirmar que a realizou (ou desligar o botão se não a fez).</p>
+                        <p>👉 Se o turno não tinha pausas, pode informar se fez alguma pausa extra ligando o botão e digitando os minutos.</p>
+                        <p>O sistema faz as contas por si e envia tudo certinho para a Agência.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como assino a minha Folha de Ponto ao fim do mês?</button>
+                    <div class="faq-answer">
+                        <p>No início do mês seguinte, quando o seu gestor fechar as contas, vai aparecer um <b>Alerta Vermelho</b> no topo do calendário da sua App.</p>
+                        <p>Basta clicar no botão <span class="highlight">Ver Folha e Assinar</span>. Poderá ler a grelha de 31 dias completa, confirmar se as suas horas estão corretas e aplicar o seu <b>Carimbo Digital</b>. Depois de assinado, o documento ganha validade legal e não pode ser alterado.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- CATEGORIA: GESTORES / AGÊNCIA -->
+        <div class="faq-category">
+            <h2 class="category-title">🏢 Gestores da Agência (Painel Central)</h2>
+            <div class="faq-list">
+
+                <div class="faq-item">
+                    <button class="faq-question">Como funciona o Agendamento Múltiplo?</button>
+                    <div class="faq-answer">
+                        <p>No ecrã de Escalas, ative a opção <span class="highlight">Modo de Agendamento Múltiplo</span>.</p>
+                        <p>Em vez de criar turno a turno, pode definir uma <b>Data Final</b> e escolher quais os dias da semana (ex: Segundas, Terças e Quintas) em que o trabalhador vai repetir aquele horário. O sistema injeta todos os turnos de uma só vez na base de dados.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Como exporto a Folha de Ponto (Grelha de 31 Dias) para a contabilidade?</button>
+                    <div class="faq-answer">
+                        <p>Vá ao separador <b>Relatórios e Fecho</b> e siga estes 2 passos:</p>
+                        <p>1️⃣ Selecione o nome de um trabalhador específico nos filtros e escolha a Data Inicial do mês que quer extrair.</p>
+                        <p>2️⃣ Clique no botão roxo <span class="highlight">📅 Folha Mensal (31 Dias)</span>.</p>
+                        <p>A tabela clássica será substituída pela Grelha Oficial do mês. Lá dentro, tem um botão verde para <b>Exportar para Excel</b> com o formato perfeito para o contabilista.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">Para que serve o botão "Buscar GPS por Morada"?</button>
+                    <div class="faq-answer">
+                        <p>Quando cria um Cliente/Hotel, o satélite precisa das coordenadas exatas para que o bloqueio de 50 metros da App dos trabalhadores funcione.</p>
+                        <p>Escreva a Rua, o Código Postal e a Cidade do Hotel. A seguir, clique em <span class="highlight">🔍 Buscar GPS por Morada</span>. O nosso sistema comunica diretamente com o satélite aberto do OpenStreetMap e preenche a Latitude e Longitude de forma automática. 100% à prova de erros!</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- CATEGORIA: CLIENTE B2B -->
+        <div class="faq-category">
+            <h2 class="category-title">🤝 Portal do Cliente (B2B / Hotéis)</h2>
+            <div class="faq-list">
+
+                <div class="faq-item">
+                    <button class="faq-question">Como peço mais equipa / extras à Agência?</button>
+                    <div class="faq-answer">
+                        <p>No seu portal, aceda a <b>🛎️ Pedidos de Extras</b>.</p>
+                        <p>Preencha a Função desejada, o Horário e a Quantidade de pessoas. O pedido vai disparar um alerta imediato no Painel Central da Agência. Se precisar dessa equipa para vários dias seguidos, ligue a opção de <span class="highlight">Pedido Múltiplo</span> para não ter de repetir o processo.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-question">O que é a Validação de Turnos?</button>
+                    <div class="faq-answer">
+                        <p>Se a Agência ativou esta camada de segurança, as horas dos trabalhadores não fecham automaticamente quando eles picam a saída.</p>
+                        <p>O turno fica a aguardar a sua revisão. No separador <b>✅ Validação de Turnos</b>, clique no botão para Validar. Pode confirmar as horas reais do trabalhador e, se necessário, escrever uma observação (Ex: "O trabalhador chegou 20 minutos atrasado"). O seu apontamento servirá de base inquestionável para a faturação da Agência.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+       <button onclick="window.close()" class="btn-back">⬅ Fechar Ajuda e Voltar ao Sistema</button>
+    </div>
+
+    <script>
+        // LÓGICA DO ACORDEÃO (Abrir e Fechar Perguntas)
+        document.querySelectorAll('.faq-question').forEach(button => {
+            button.addEventListener('click', () => {
+                const item = button.parentElement;
+                const isActive = item.classList.contains('active');
+                
+                // Fecha todos os outros primeiro
+                document.querySelectorAll('.faq-item').forEach(faq => {
+                    faq.classList.remove('active');
+                });
+
+                // Se não estava ativo, abre. Se estava, fica fechado.
+                if (!isActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // LÓGICA DO MOTOR DE BUSCA EM TEMPO REAL
+        function filterFAQs() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase().trim();
+            const categories = document.querySelectorAll('.faq-category');
+            const noResults = document.getElementById('noResults');
+            const searchTermDisplay = document.getElementById('searchTermDisplay');
+            let hasAnyResult = false;
+
+            categories.forEach(category => {
+                const items = category.querySelectorAll('.faq-item');
+                let hasVisibleItem = false;
+
+                items.forEach(item => {
+                    // Pesquisa tanto na pergunta como na resposta
+                    const question = item.querySelector('.faq-question').innerText.toLowerCase();
+                    const answer = item.querySelector('.faq-answer').innerText.toLowerCase();
+
+                    if (question.includes(filter) || answer.includes(filter)) {
+                        item.style.display = 'block';
+                        hasVisibleItem = true;
+                        hasAnyResult = true;
+                    } else {
+                        item.style.display = 'none';
+                        item.classList.remove('active'); // Fecha o item se for escondido
+                    }
+                });
+
+                // Esconde a categoria inteira (título) se não houver perguntas visíveis dentro dela
+                category.style.display = hasVisibleItem ? 'block' : 'none';
+            });
+
+            // Mostra a mensagem de "Não encontrado"
+            if (!hasAnyResult && filter !== '') {
+                searchTermDisplay.innerText = input.value;
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

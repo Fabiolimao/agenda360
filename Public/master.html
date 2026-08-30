@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Master Admin - Agenda360</title>
+    <link rel="icon" type="image/png" href="/logo_fav.png">
+    <style>
+        /* 🎨 IMPORTAÇÃO DA TIPOGRAFIA PREMIUM */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        :root { 
+            --primary-color: #00468b; 
+            --sidebar-bg: #0f172a; 
+            --sidebar-hover: #1e293b; 
+            --bg-color: #F0F4F8; 
+            --card-bg: #ffffff;
+            --text-color: #0f172a; 
+            --text-muted: #64748b;
+            --success-color: #10b981; 
+            --action-color: #0ea5e9; 
+            --danger-color: #ef4444; 
+            --warning-color: #f59e0b; 
+            --info-color: #3b82f6; 
+            --border-soft: #e2e8f0;
+            --card-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); 
+        }
+
+        * { box-sizing: border-box; font-family: 'Outfit', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); overflow: hidden; }
+
+        /* ✨ SCROLLBARS ESTILO macOS */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* 🧭 MENU LATERAL (SIDEBAR) PREMIUM */
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; z-index: 2000; box-shadow: 4px 0 15px rgba(0,0,0,0.05); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); border-right: 1px solid rgba(255,255,255,0.05); }
+        .sidebar-header { padding: 30px 20px; text-align: center; background-color: rgba(0,0,0,0.15); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .sidebar-header h2 { font-weight: 800; font-size: 1.6rem; letter-spacing: -0.5px; margin-bottom: 5px; }
+        .nav-links { list-style: none; padding: 15px 10px; flex: 1; overflow-y: auto; }
+        .nav-links li { margin-bottom: 5px; }
+        .nav-links li a { display: block; padding: 14px 20px; color: #94a3b8; text-decoration: none; cursor: pointer; transition: all 0.2s ease; font-weight: 600; font-size: 0.95rem; border-radius: 12px; }
+        .nav-links a:hover, .nav-links a.active { color: var(--action-color); transform: translateX(4px); }
+        .nav-links a.active { background-color: rgba(14, 165, 233, 0.1); color: var(--action-color); }
+        .btn-logout { background-color: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); margin: 15px; padding: 14px; cursor: pointer; font-weight: 700; text-align: center; border-radius: 12px; transition: all 0.2s; }
+        .btn-logout:hover { background-color: var(--danger-color); color: white; }
+
+        /* 🔝 BARRA DE TOPO COM EFEITO VIDRO */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+        .topbar { 
+            background-color: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(12px); 
+            padding: 20px 30px; 
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04); 
+            display: flex; align-items: center; justify-content: space-between; 
+            position: sticky; top: 0; z-index: 999; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .menu-toggle { display: none; background: none; border: none; font-size: 1.8rem; color: var(--primary-color); cursor: pointer; padding-right: 15px; }
+        
+        .page-content { padding: 30px; display: none; }
+        .page-content.active { display: block; animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 🗂️ CARTÕES FLUTUANTES */
+        .card { background: var(--card-bg); border-radius: 20px; padding: 30px; box-shadow: var(--card-shadow); margin-bottom: 30px; border: none; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card:hover { box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.08); }
+        .card h2 { color: var(--primary-color); font-size: 1.4rem; font-weight: 800; padding-bottom: 15px; margin-bottom: 25px; border-bottom: 1px dashed var(--border-soft); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; letter-spacing: -0.5px; }
+        .card h3 { color: var(--text-main); font-size: 1.15rem; font-weight: 700; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px dashed var(--border-soft); padding-bottom: 8px; }
+
+        /* 📝 FORMULÁRIOS PREMIUM */
+        .form-row { display: flex; gap: 20px; flex-wrap: wrap; }
+        .form-group { margin-bottom: 20px; flex: 1; min-width: 220px; }
+        label { display: block; margin-bottom: 8px; font-weight: 700; font-size: 0.9rem; color: var(--text-color); padding-left: 4px; }
+        input, select, textarea { 
+            width: 100%; padding: 14px 16px; border: 1.5px solid var(--border-soft); 
+            border-radius: 12px; font-size: 0.95rem; background: var(--bg-color); color: var(--text-color);
+            transition: all 0.3s ease; outline: none; font-family: 'Outfit', sans-serif;
+        }
+        input:focus, select:focus, textarea:focus { 
+            border-color: var(--primary-color); background: var(--card-bg);
+            box-shadow: 0 0 0 4px rgba(0, 70, 139, 0.1); 
+        }
+        
+        .password-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+        .password-wrapper input { width: 100%; padding-right: 45px; }
+        .toggle-pwd { position: absolute; right: 15px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); padding: 0; z-index: 10; transition: color 0.2s; }
+        .toggle-pwd:hover { color: var(--primary-color); }
+
+        /* 🖱️ BOTÕES MODERNOS */
+        .btn-save { background: var(--primary-color); color: white; border: none; padding: 16px; width: 100%; border-radius: 12px; font-weight: 700; font-size: 1.05rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 10px 20px -5px rgba(0, 70, 139, 0.3); }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(0, 70, 139, 0.4); }
+        .btn-save:active { transform: translateY(0); }
+        
+        .btn-action { background: var(--action-color); color: white; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.95rem; box-shadow: 0 8px 15px -5px rgba(14, 165, 233, 0.3); transition: all 0.2s; }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 12px 20px -5px rgba(14, 165, 233, 0.4); }
+        
+        .btn-small-view { background: var(--info-color); color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; margin-right: 5px; transition: transform 0.1s; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2); }
+        .btn-small-view:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .btn-small-edit { background: var(--warning-color); color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; margin-right: 5px; transition: transform 0.1s; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); }
+        .btn-small-edit:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        
+        /* Badges otimizadas para não deformarem as tabelas */
+        .badge { display: inline-block; white-space: nowrap; padding: 4px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 800; color: white; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1); line-height: 1.2; letter-spacing: 0.5px; }
+        .badge-ativo { background-color: var(--success-color); }
+        .badge-bloqueado { background-color: var(--warning-color); }
+
+        /* 📊 TABELAS E LAYOUT ANTI-QUEBRA */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9rem; margin-top: 15px; min-width: 850px; }
+        th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border-soft); }
+        th { background: #f8fafc; font-weight: 700; color: var(--text-color); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        th:first-child { border-top-left-radius: 12px; } th:last-child { border-top-right-radius: 12px; }
+        tbody tr { transition: background 0.2s ease; }
+        tbody tr:hover { background-color: #f8fafc; }
+        
+        /* 🛡️ IMPEDE VALORES EM EURO DE QUEBRAREM A LINHA */
+        .nowrap { white-space: nowrap !important; }
+        
+        /* 🛡️ MODAIS */
+        .modal-overlay-content { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(6px); padding: 15px; }
+        .modal-box { background: var(--card-bg); padding: 35px; border-radius: 24px; width: 100%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .close-btn { position: absolute; top: 20px; right: 25px; font-size: 1.8rem; cursor: pointer; color: var(--text-muted); transition: 0.2s; z-index: 10; background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+        .close-btn:hover { color: var(--danger-color); transform: scale(1.1); }
+        .detalhe-linha { margin-bottom: 12px; border-bottom: 1px dashed var(--border-soft); padding-bottom: 8px; font-size: 1rem; word-break: break-word; }
+        .detalhe-linha strong { color: var(--primary-color); display: inline-block; width: 180px; font-weight: 700; }
+        
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; height: 100%; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .page-content { padding: 15px; }
+            .card { padding: 20px; border-radius: 16px; }
+            .detalhe-linha strong { display: block; width: 100%; margin-bottom: 4px; }
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            table { border: none !important; margin-top: 10px !important; min-width: 100% !important; }
+            tr { background: #fff; border: 1px solid var(--border-soft) !important; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); padding: 5px 0; }
+            td { border: none !important; border-bottom: 1px dashed var(--border-soft) !important; padding: 12px !important; text-align: left; }
+            td:last-child { border-bottom: 0 !important; }
+            .modal-box { padding: 20px; }
+        }
+
+        /* 🖨️ IMPRESSÃO TOTALMENTE BRANCA E OFICIAL (OVERRIDE FORÇADO) */
+        @media print {
+            body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
+            .sidebar, .topbar, section.page-content, .menu-toggle, .no-print, .btn-action, .card { display: none !important; }
+            .main-content { overflow: visible !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            
+            /* Forçar a área de impressão a ficar visível */
+            #printAreaContrato[style*="display: block"] { display: block !important; }
+            #printAreaFaturacao[style*="display: block"] { display: block !important; }
+            
+            /* 📍 DESTRUIR A REGRA DE TELEMÓVEL QUE ESCONDIA OS TÍTULOS */
+            table, thead, tbody, tfoot, tr, th, td { display: revert !important; }
+            table { display: table !important; width: 100% !important; border-collapse: collapse !important; margin-top: 0 !important; min-width: 100% !important; border: 1px solid #000 !important; }
+            
+            /* 📍 TÍTULOS FIXOS E FORÇADOS */
+            thead { display: table-header-group !important; }
+            thead tr { position: static !important; display: table-row !important; top: auto !important; left: auto !important; }
+            
+            tbody { display: table-row-group !important; }
+            tfoot { display: table-footer-group !important; }
+            tr { display: table-row !important; background: transparent !important; border: none !important; box-shadow: none !important; margin-bottom: 0 !important; padding: 0 !important; page-break-inside: avoid !important; }
+            
+            /* Sem fundos e sem cinzentos. Apenas bordas finas para contraste */
+            th, td { display: table-cell !important; border: 1px solid #999 !important; color: black !important; padding: 8px !important; font-size: 10pt !important; text-align: left !important; background: transparent !important; }
+            th { border-bottom: 2px solid #000 !important; font-weight: bold !important; color: black !important; background-color: transparent !important; }
+            
+            /* Anular qualquer fundo no footer (MRR) */
+            tfoot tr { background-color: transparent !important; color: black !important; }
+            tfoot td { background-color: transparent !important; color: black !important; border-top: 2px solid #000 !important; font-weight: bold !important; }
+            
+            /* Limpar as etiquetas coloridas e converter em texto simples com borda */
+            .badge { background: transparent !important; color: black !important; border: 1px solid #000 !important; padding: 2px 6px !important; font-size: 8pt !important; box-shadow: none !important; }
+
+            /* Esconder eventuais botões intrusos que fiquem na tabela */
+            .btn-small-view, button { display: none !important; }
+
+            @page { size: landscape; margin: 15mm; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2 style="color: white; font-size: 1.5rem; margin-bottom: 2px;">Agenda<span style="color: var(--primary-color);">360</span></h2>
+            <div style="font-size: 0.85rem; color: var(--action-color); font-weight: 700; letter-spacing: 1px;">SUPER ADMIN</div>
+        </div>
+        <ul class="nav-links">
+            <li><a class="active" onclick="navegar('clientes', this)">Gestão de Clientes (SaaS)</a></li>
+            <li id="menuFaturacao"><a onclick="navegar('faturacao', this)">Faturação e Fecho Mensal</a></li>
+            <li id="menuConfig"><a onclick="navegar('configuracoes', this)">A Minha Empresa</a></li>
+            <li><a onclick="navegar('seguranca', this)">Segurança Master</a></li>
+        </ul>
+        <button class="btn-logout" onclick="fazerLogout()">Sair do Sistema</button>
+    </nav>
+
+    <div class="main-content">
+        <header class="topbar no-print">
+            <div style="display: flex; align-items: center;">
+                <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+                <h1 style="font-size: 1.4rem; font-weight: 800; margin: 0; color: var(--text-color); letter-spacing: -0.5px;">Painel de Comando da <span style="color: var(--primary-color);">Nave Mãe</span></h1>
+            </div>
+        </header>
+
+        <section id="clientes" class="page-content active">
+            <div class="card no-print" style="border-left: 4px solid var(--primary-color);">
+                <h2 id="tituloCardAgencia">Registar Nova Empresa Cliente</h2>
+                <form id="formNovaAgencia">
+                    <input type="hidden" id="agIdEdit">
+                    
+                    <h3>1. Credenciais de Acesso (Login do Gestor)</h3>
+                    <div class="form-row">
+                        <div class="form-group"><label>Nome da Agência / Empresa</label><input type="text" id="agNome" required></div>
+                        <div class="form-group"><label>E-mail Corporativo</label><input type="email" id="agEmail" required></div>
+                        <div class="form-group" id="blocoSenha">
+                            <label>Senha de Acesso Inicial</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="agSenha">
+                                <button type="button" class="toggle-pwd" onclick="togglePassword('agSenha', this); return false;">👁️</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>2. Dados Fiscais e Legais (Para Contrato)</h3>
+                    <div class="form-row">
+                        <div class="form-group"><label>NIF da Empresa</label><input type="text" id="agNif"></div>
+                        <div class="form-group"><label>Representante Legal (Nome)</label><input type="text" id="agRepLegal"></div>
+                        <div class="form-group"><label>Cargo do Representante</label><input type="text" id="agCargo" placeholder="Ex: Sócio-Gerente"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Morada Sede (Rua/Porta)</label><input type="text" id="agRua"></div>
+                        <div class="form-group" style="max-width: 150px;"><label>Código Postal</label><input type="text" id="agCP" placeholder="Ex: 4400-123"></div>
+                        <div class="form-group"><label>Localidade / Concelho</label><input type="text" id="agLocalidade"></div>
+                    </div>
+
+                    <h3>3. Regras de Negócio e Faturação</h3>
+                    <div class="form-row" style="background: #f0fdf4; padding: 15px; border-radius: 12px; border: 1.5px dashed var(--success-color);">
+                        <div class="form-group"><label>Data de Início do Contrato</label><input type="date" id="agDataInicio"></div>
+                        <div class="form-group"><label>Limite de Funcionários (Pacote Base)</label><input type="number" id="agLimFunc" value="0"></div>
+                        <div class="form-group"><label>Valor Mensal Pacote Base (€)</label><input type="number" step="0.01" id="agValBase" value="0.00"></div>
+                    </div>
+                    <div class="form-row" style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1.5px solid var(--border-soft); margin-top: 15px;">
+                        <div class="form-group"><label>Valor Extra Ativo (€ / pessoa)</label><input type="number" step="0.01" id="agValExtraAtivo" value="0.00"></div>
+                        <div class="form-group"><label>Valor Manutenção Inativo (€ / pessoa)</label><input type="number" step="0.01" id="agValExtraInativo" value="0.00"></div>
+                        <div class="form-group"><label>Vencimento Fatura (Dia)</label><input type="number" id="agDiaVencimento" min="1" max="31" value="8"></div>
+                        <div class="form-group">
+                            <label>Regime de IVA</label>
+                            <select id="agIva">
+                                <option value="+ IVA">+ Acresce IVA à taxa legal</option>
+                                <option value="IVA Incluído">Valor com IVA Incluído</option>
+                                <option value="Isento">Isento de IVA</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="margin-top: 25px;">
+                        <button type="submit" class="btn-save" id="btnSalvarAgencia" style="max-width: 300px;">Gravar e Criar Contrato</button>
+                        <button type="button" class="btn-action" id="btnCancelarAgencia" style="background:#64748b; display:none;" onclick="cancelarEdicaoAgencia()">Cancelar Edição</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card no-print">
+                <h2>Clientes Ativos no Sistema</h2>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>ID</th><th>Empresa / Cliente</th><th>Pacote & Faturação</th><th>Estado</th><th>Ações</th></tr></thead>
+                        <tbody id="tabelaAgencias"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ESCONDIDO: Usado para imprimir o Contrato -->
+        <div id="printAreaContrato" style="display: none; padding: 2cm; background: white; text-align: justify; line-height: 1.6; font-size: 11pt;"></div>
+
+        <section id="faturacao" class="page-content">
+
+            <div class="card no-print" style="border-left: 4px solid var(--action-color); margin-bottom: 30px;">
+                <h2>Simulador de Orçamentos Comerciais</h2>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Use esta calculadora dinâmica durante as reuniões para prever instantaneamente a faturação de um cliente com base no seu volume operacional e regras de contrato.</p>
+                
+                <div class="form-row" style="align-items: stretch;">
+                    <div style="flex: 2; min-width: 300px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--border-soft);">
+                        <h3 style="margin-top: 0; font-size: 1.05rem; color: var(--primary-color);">1. Regras Base do Contrato</h3>
+                        <div class="form-row">
+                            <div class="form-group"><label>Valor Base Mensal (€)</label><input type="number" id="simValBase" value="99.00" step="0.01" oninput="calcularSimulador()"></div>
+                            <div class="form-group"><label>Trabalhadores Incluídos</label><input type="number" id="simLimBase" value="20" oninput="calcularSimulador()"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Custo Extra Ativo (€)</label><input type="number" id="simValExtra" value="2.50" step="0.01" oninput="calcularSimulador()"></div>
+                            <div class="form-group"><label>Custo Extra Inativo (€)</label><input type="number" id="simValInativo" value="0.50" step="0.01" oninput="calcularSimulador()"></div>
+                        </div>
+                        <div class="form-row" style="margin-bottom: 0;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Regime de Imposto (IVA)</label>
+                                <select id="simIva" onchange="calcularSimulador()">
+                                    <option value="23">+ Acresce IVA (23%)</option>
+                                    <option value="0">Isento ou IVA Incluído (0%)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; min-width: 250px; background: #fffbeb; padding: 20px; border-radius: 16px; border: 1px solid #fde68a;">
+                        <h3 style="margin-top: 0; font-size: 1.05rem; color: #b45309;">2. Cenário do Cliente</h3>
+                        <div class="form-group"><label>Total de Ativos Previstos</label><input type="number" id="simQtdAtivos" value="35" oninput="calcularSimulador()"></div>
+                        <div class="form-group" style="margin-bottom: 0;"><label>Total de Inativos Previstos</label><input type="number" id="simQtdInativos" value="10" oninput="calcularSimulador()"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px; padding: 25px; background: var(--sidebar-bg); color: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 12px;">
+                        <span style="font-size: 1.05rem;">Subtotal (Base + Custos Extra):</span>
+                        <span id="resSubtotal" style="font-weight: 700; font-size: 1.3rem;">0.00 €</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 12px;">
+                        <span style="font-size: 1.05rem;">Cálculo do Imposto (IVA):</span>
+                        <span id="resIva" style="font-weight: 700; font-size: 1.1rem; color: #94a3b8;">0.00 €</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;">
+                        <span style="font-size: 1.3rem; font-weight: 800; color: var(--action-color);">VALOR FINAL A FATURAR:</span>
+                        <span id="resTotal" style="font-size: 2.2rem; font-weight: 800; color: var(--success-color); letter-spacing: -1px;">0.00 €</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.95rem; color: #94a3b8;">Custo Diário Efetivo (por Trabalhador Ativo / 30 dias):</span>
+                        <span id="resCustoDia" style="font-weight: 800; font-size: 1.15rem; color: var(--warning-color); background: rgba(245, 158, 11, 0.1); padding: 4px 12px; border-radius: 8px; border: 1px dashed var(--warning-color);">0.00 €</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card no-print" style="border-left: 4px solid var(--success-color);">
+                
+                <!-- 📍 MÁQUINA DO TEMPO E FILTROS -->
+                <div class="no-print" style="margin-bottom: 25px;">
+                    <h2 style="margin: 0 0 15px 0; color: var(--primary-color); font-size: 1.4rem; font-weight: 800; border-bottom: none;">Extrato de Faturação de Clientes</h2>
+                    
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid var(--border-soft);">
+                        
+                        <div style="flex: 2; min-width: 200px;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px 4px;">Filtro de Cliente</label>
+                            <select id="fatCliente" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-soft); font-weight: 600; font-size: 0.95rem; outline: none; cursor: pointer;">
+                                <option value="ALL">🏢 Todos os Clientes Ativos</option>
+                            </select>
+                        </div>
+
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px 4px;">Mês de Faturação</label>
+                            <select id="fatMes" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-soft); font-weight: 600; font-size: 0.95rem; outline: none; cursor: pointer;">
+                                <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                                <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                                <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                                <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                            </select>
+                        </div>
+
+                        <div style="width: 100px;">
+                            <label style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 4px 4px;">Ano</label>
+                            <input type="number" id="fatAno" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-soft); font-weight: 600; font-size: 0.95rem; outline: none;">
+                        </div>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px;">
+                            <button class="btn-action" style="background: var(--primary-color); display:flex; align-items:center; gap:6px; padding:10px 16px;" onclick="carregarFaturacao()">
+                                🔄 Gerar Extrato
+                            </button>
+                            <button class="btn-action" style="background: var(--success-color); display:flex; align-items:center; gap:6px; padding:10px 16px;" onclick="exportarExcelFaturacao()">
+                                📊 Exportar Excel
+                            </button>
+                            <button class="btn-action" style="background: var(--info-color); display:flex; align-items:center; gap:6px; padding:10px 16px;" onclick="imprimirFaturacao()">
+                                🖨️ Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="no-print" style="color: var(--text-muted); margin-bottom: 25px; font-size: 0.95rem;">O motor calcula automaticamente o valor a faturar a cada agência com base no histórico exato do mês selecionado. <span style="color:var(--warning-color); font-weight:bold;">🛡️ Trava Antifraude: Trabalhadores inativados no decurso do próprio mês ainda faturam no pacote base.</span></p>
+
+                <div style="overflow-x: auto;" id="wrapperFaturacao">
+                    <table id="tabelaFaturacao">
+                        <thead>
+                            <tr>
+                                <th>Cliente (NIF)</th>
+                                <th>Base Mensal</th>
+                                <th>Ativos (No Mês)</th>
+                                <th>Inativos</th>
+                                <th>Subtotal</th>
+                                <th>Regime Fiscal</th>
+                                <th style="background: #f0fdf4; border-left: 2px solid var(--success-color);">Total c/ IVA</th>
+                                <th>Dia Limite</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoFaturacao">
+                            <tr><td colspan="8" style="text-align: center; color: #64748b;">Gere um extrato no formulário acima.</td></tr>
+                        </tbody>
+                        <tfoot id="rodapeFaturacao" style="display: none;">
+                            <tr style="background-color: #0f172a; color: white;">
+                                <td colspan="4" style="text-align: right; font-weight: bold; font-size: 1.05rem; padding: 12px; background-color: inherit; color: inherit;">MRR GLOBAL DO MÊS:</td>
+                                <td id="mrrSubtotal" class="nowrap" style="font-weight: bold; font-size: 1.05rem; padding: 12px; color: #bae6fd; background-color: inherit;">0.00 €</td>
+                                <td class="nowrap" style="text-align: right; font-size: 0.9rem; color: #94a3b8; padding: 12px; background-color: inherit;">Impostos: <span id="mrrIva">0.00 €</span></td>
+                                <td id="mrrTotal" class="nowrap" colspan="2" style="font-weight: 800; font-size: 1.25rem; padding: 12px; color: #34d399; background-color: inherit;">0.00 €</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📍 ESCONDIDO: Módulo Dedicado Exclusivo para Impressão da Faturação -->
+        <div id="printAreaFaturacao" style="display: none; padding: 1cm; background: white;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <img src="/logo_agenda_360.jpeg" alt="Agenda360 Logo" style="max-height: 55px; border-radius: 4px;" onerror="this.style.display='none'">
+                    <div>
+                        <h1 style="font-size: 16pt; margin: 0; color: #000; text-transform: uppercase;">Extrato de Faturação</h1>
+                        <p style="font-size: 10pt; margin: 5px 0 0 0; color: #555;" id="lblPrintExtratoMesHidden">Emitido pelo Painel Master Agenda360</p>
+                    </div>
+                </div>
+            </div>
+            <table id="printTabelaFaturacao" style="width: 100%; border-collapse: collapse; font-size: 10pt; text-align: left;">
+                <!-- Preenchido pelo Javascript na hora da impressão -->
+            </table>
+        </div>
+
+        <section id="configuracoes" class="page-content">
+            <div class="card no-print" style="border-left: 4px solid var(--action-color);">
+                <h2>Dados da Minha Empresa (SaaS Owner)</h2>
+                <form id="formConfigMaster">
+                    <div class="form-row">
+                        <div class="form-group"><label>Razão Social (Nome da Empresa ou o seu Nome)</label><input type="text" id="cfgRazaoSocial" placeholder="Deixe em branco por enquanto se não tiver"></div>
+                        <div class="form-group"><label>NIF (Número de Identificação Fiscal)</label><input type="text" id="cfgNif"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Morada da Sede</label><input type="text" id="cfgMorada"></div>
+                        <div class="form-group" style="max-width: 150px;"><label>Código Postal</label><input type="text" id="cfgCP"></div>
+                        <div class="form-group"><label>Localidade</label><input type="text" id="cfgLocalidade"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>E-mail Oficial (Faturação e Suporte)</label>
+                            <input type="email" id="cfgEmail" placeholder="Será usado no botão de Ajuda de todas as Agências">
+                        </div>
+                        <div class="form-group"><label>IBAN para Pagamentos dos Clientes</label><input type="text" id="cfgIban"></div>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;">Modelo de Contrato Jurídico (Gerador Automático)</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <textarea id="cfgContrato" rows="20" style="font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; background: var(--bg-color); resize: vertical; border: 1.5px solid var(--border-soft);"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save" style="max-width: 250px;">Gravar Configurações</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="seguranca" class="page-content">
+            <div class="card no-print" style="border-left: 4px solid var(--primary-color);">
+                <h2>Alterar Palavra-passe Master</h2>
+                <form id="formSenhaMaster">
+                    <div class="form-row">
+                        <div class="form-group"><label>Senha Atual</label><div class="password-wrapper"><input type="password" id="senhaAtual"><button type="button" class="toggle-pwd" onclick="togglePassword('senhaAtual', this); return false;">👁️</button></div></div>
+                        <div class="form-group"><label>Nova Senha Master</label><div class="password-wrapper"><input type="password" id="senhaNova" placeholder="Mínimo 8 caractéres, 1 Maiúscula, 1 Número" required><button type="button" class="toggle-pwd" onclick="togglePassword('senhaNova', this); return false;">👁️</button></div></div>
+                    </div>
+                    <button type="submit" class="btn-save" style="background: var(--primary-color); max-width: 300px;">Atualizar Senha no Servidor</button>
+                </form>
+            </div>
+            
+            <div class="card no-print" style="border-left: 4px solid var(--info-color);">
+                <h2>Alterar PIN de Emergência (Quebra-Vidro)</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Este PIN é usado exclusivamente na página de login para recuperar o acesso caso se esqueça da Senha Master. Guarde-o num local seguro.</p>
+                <form id="formPinMaster">
+                    <div class="form-row">
+                        <div class="form-group" style="max-width: 400px;">
+                            <label>Novo PIN Secreto</label>
+                            <div class="password-wrapper">
+                                <input type="password" id="pinNovo" placeholder="Mínimo 6 caracteres" required minlength="6">
+                                <button type="button" class="toggle-pwd" onclick="togglePassword('pinNovo', this); return false;">👁️</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-action" style="background: var(--info-color); margin-top: 10px;">Gravar Novo PIN no Cofre</button>
+                </form>
+            </div>
+
+            <div class="card no-print" style="border-left: 4px solid var(--danger-color); background: #fef2f2;">
+                <h3 style="margin-top: 10px; color: var(--danger-color); border-bottom: 1px dashed #fca5a5; padding-bottom: 8px; font-weight: 800;">Arquivamento Frio (Manutenção da Base de Dados)</h3>
+                <p style="color: #991b1b; font-size: 0.95rem; margin-bottom: 25px;">Para manter a plataforma rápida e evitar a "obesidade" da base de dados, este protocolo exporta todos os registos de turnos com mais de 2 anos para um ficheiro físico no servidor (Backups) e apaga-os da máquina principal.</p>
+                <button type="button" class="btn-action" style="background: var(--danger-color); color: white; font-weight: 800; padding: 16px 24px; border-radius: 12px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);" onclick="executarArquivamentoFrio()">📦 Executar Arquivamento Frio Automático</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL GENÉRICO (Ficha de Cliente) -->
+    <div id="modalVer" class="modal-overlay-content no-print">
+        <div class="modal-box">
+            <span class="close-btn" onclick="document.getElementById('modalVer').style.display='none'">&times;</span>
+            <h2 id="modalVerTitulo" style="color: var(--primary-color); border-bottom: 2px dashed var(--border-soft); padding-bottom: 10px; margin-bottom: 20px;">Detalhes</h2>
+            <div id="modalVerConteudo"></div>
+        </div>
+    </div>
+
+    <!-- 📍 NOVO MODAL: LISTA NOMINAL DE FATURAÇÃO -->
+    <div id="modalDetalheFat" class="modal-overlay-content no-print">
+        <div class="modal-box" style="padding: 25px 30px;">
+            <span class="close-btn" onclick="document.getElementById('modalDetalheFat').style.display='none'">&times;</span>
+            <h2 id="modalDetalheFatTitulo" style="color: var(--primary-color); border-bottom: 2px dashed var(--border-soft); padding-bottom: 10px; margin-bottom: 15px; padding-right: 30px; font-size: 1.3rem;">Detalhe de Trabalhadores</h2>
+            <div id="modalDetalheFatConteudo" style="display: flex; flex-direction: column;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 🛡️ MOTOR ANTI-XSS
+        window.sanitizarTexto = function(str) {
+            if (str === null || str === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        };
+
+        const masterToken = sessionStorage.getItem('agenda360_master_token');
+        let listaGlobalAgencias = [];
+        let configMasterGlobal = {};
+        let dadosFaturacaoGlobal = []; // Guarda dados localmente para o Excel e Impressão
+
+        const modeloContratoPadrao = `**CONTRATO DE PRESTAÇÃO DE SERVIÇOS (SaaS) - AGENDA360**
+
+**ENTRE:**
+**{{NOME_MASTER}}**, com sede em {{MORADA_MASTER}}, titular do NIF {{NIF_MASTER}}, adiante designada por **"PRESTADORA"**;
+
+**E:**
+**{{NOME_CLIENTE}}**, com sede em {{MORADA_CLIENTE}}, titular do NIF {{NIF_CLIENTE}}, neste ato legalmente representada por {{REP_CLIENTE}}, na qualidade de {{CARGO_CLIENTE}}, adiante designada por **"CLIENTE"**.
+
+É celebrado o presente Contrato de Prestação de Serviços na modalidade Software as a Service (SaaS), que se rege pelas seguintes cláusulas:
+
+**CLÁUSULA 1ª – OBJETO**
+1. A PRESTADORA concede ao CLIENTE o direito de acesso e utilização não exclusivo, temporário e intransmissível da plataforma de gestão operacional e controlo de assiduidade denominada Agenda360.
+2. O sistema é disponibilizado em ambiente web (Painel de Gestão) e mobile (App Trabalhador), ficando alojado nos servidores geridos pela PRESTADORA, não havendo lugar à cedência de qualquer código-fonte.
+
+**CLÁUSULA 2ª – CONDIÇÕES COMERCIAIS E DE FATURAÇÃO**
+1. Pela utilização do sistema, o CLIENTE obriga-se a pagar à PRESTADORA uma contrapartida financeira mensal, calculada com base no volume de dados ativos e retidos, conforme a seguinte tabela acordada:
+- Valor Base Mensal: {{VALOR_BASE}} € (inclui a gestão de até {{LIMITE_BASE}} trabalhadores ativos).
+- Taxa por Trabalhador Ativo Extra: {{VALOR_EXTRA_ATIVO}} € por cada trabalhador ativo que exceda o limite base.
+- Taxa de Retenção de Dados (Inativos): {{VALOR_EXTRA_INATIVO}} € por cada registo de trabalhador suspenso/inativo mantido no cofre digital para efeitos de histórico e auditoria legal.
+2. Aos valores acresce o seguinte regime: {{REGIME_IVA}}.
+3. O apuramento do número de trabalhadores é realizado mensalmente. Qualquer utilizador que se encontre no estado "Ativo" em qualquer momento durante o ciclo de faturação será contabilizado como tal para esse mês. A alteração para o estado "Inativo" (retenção de dados) apenas produzirá efeitos comerciais de redução de tarifa a partir do primeiro dia do mês imediatamente seguinte.
+4. As faturas serão emitidas mensalmente e deverão ser liquidadas até ao dia {{DIA_VENCIMENTO}} do mês seguinte, por transferência bancária para o IBAN: {{IBAN_MASTER}}.
+
+**CLÁUSULA 3ª – PERÍODO EXPERIMENTAL E ISENÇÃO INICIAL**
+1. O CLIENTE beneficia de um período promocional de isenção total de custos correspondente aos primeiros 30 (trinta) dias de utilização do sistema, contabilizados a partir da data de assinatura do presente contrato.
+2. Durante este período, o CLIENTE poderá rescindir o contrato a qualquer momento, sem qualquer penalização ou custo associado.
+3. Findo o período de 30 dias, e não havendo comunicação de cancelamento, a prestação de serviços converte-se automaticamente na modalidade paga. Em caso de cancelamento dentro deste período, todos os dados inseridos serão permanentemente eliminados dos servidores da PRESTADORA.
+
+**CLÁUSULA 4ª – PROTEÇÃO DE DADOS (RGPD) E GEOLOCALIZAÇÃO**
+1. Para efeitos do RGPD, o CLIENTE atua como "Responsável pelo Tratamento" e a PRESTADORA atua exclusivamente como "Subcontratante".
+2. Geolocalização (CNPD): A plataforma recolhe localização de forma estritamente pontual (apenas no ato da picagem), recusando a monitorização contínua. É responsabilidade do CLIENTE garantir a licitude dos dados.
+
+**CLÁUSULA 5ª – SUPORTE TÉCNICO E EXCLUSÃO DE RESPONSABILIDADE**
+1. A PRESTADORA fornecerá suporte técnico ao CLIENTE através dos canais oficiais.
+2. A PRESTADORA não se responsabiliza por falhas decorrentes de fatores externos (falhas de internet, GPS inoperante ou mau uso da aplicação).
+
+**CLÁUSULA 6ª – VIGÊNCIA, RESCISÃO E ELIMINAÇÃO DE DADOS**
+1. O presente contrato entra em vigor a {{DATA_INICIO}}, tendo a duração inicial de 12 meses, renovando-se automaticamente por iguais períodos.
+2. Qualquer uma das partes poderá rescindir o contrato mediante comunicação por escrito com a antecedência mínima de 30 dias.
+3. Em caso de rescisão, a PRESTADORA fornece um ficheiro de exportação standard em formato digital (.CSV ou Excel). Cumprindo o RGPD, a PRESTADORA procederá à eliminação irrecuperável de todos os dados do CLIENTE no prazo máximo de 30 dias após a cessação do contrato.
+
+**CLÁUSULA 7ª – LEI APLICÁVEL E FORO COMPETENTE**
+1. O presente contrato rege-se pela legislação em vigor em Portugal.
+2. Para a resolução de qualquer litígio, as partes elegem como competente o Foro da Comarca do Porto, com expressa renúncia a qualquer outro.
+
+Feito em duplicado, assinando ambas as partes com total aceitação das cláusulas presentes.
+
+Data: ____ / ____ / ________
+
+A PRESTADORA: _________________________________________ ({{NOME_MASTER}})
+O CLIENTE: _________________________________________ ({{NOME_CLIENTE}})`;
+
+        if(!sessionStorage.getItem('master_logado') || !masterToken) { window.location.href = '/'; }
+
+        // 📍 MÁQUINA DO TEMPO: Inicializa os selects com a data atual
+        window.addEventListener('DOMContentLoaded', () => {
+            const dateObj = new Date();
+            document.getElementById('fatMes').value = dateObj.getMonth() + 1;
+            document.getElementById('fatAno').value = dateObj.getFullYear();
+        });
+
+        function togglePassword(inputId, btn) { const input = document.getElementById(inputId); if (input.type === 'password') { input.type = 'text'; btn.innerText = '🙈'; } else { input.type = 'password'; btn.innerText = '👁️'; } }
+
+        function navegar(idSecao, elementoMenu) {
+            document.querySelectorAll('.page-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-links a').forEach(el => el.classList.remove('active'));
+            document.getElementById(idSecao).classList.add('active');
+            elementoMenu.classList.add('active');
+            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+            
+            if(idSecao === 'clientes') carregarAgencias();
+            if(idSecao === 'faturacao') {
+                calcularSimulador(); 
+            }
+            if(idSecao === 'configuracoes') carregarConfigMaster();
+        }
+
+        async function fazerLogout() {
+            const tkn = sessionStorage.getItem('agenda360_master_token');
+            if (tkn) {
+                try { await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tkn } }); } catch(e) {}
+            }
+            sessionStorage.removeItem('master_logado'); 
+            sessionStorage.removeItem('agenda360_master_token'); 
+            window.location.href = '/'; 
+        }
+
+        // LÓGICA DO SIMULADOR DE CUSTOS COMERCIAIS
+        function calcularSimulador() {
+            const valBase = parseFloat(document.getElementById('simValBase').value) || 0;
+            const limBase = parseInt(document.getElementById('simLimBase').value) || 0;
+            const valExtra = parseFloat(document.getElementById('simValExtra').value) || 0;
+            const valInativo = parseFloat(document.getElementById('simValInativo').value) || 0;
+            
+            const qtdAtivos = parseInt(document.getElementById('simQtdAtivos').value) || 0;
+            const qtdInativos = parseInt(document.getElementById('simQtdInativos').value) || 0;
+            const taxaIva = parseInt(document.getElementById('simIva').value) || 0;
+
+            let ativosExtra = qtdAtivos - limBase;
+            if (ativosExtra < 0) ativosExtra = 0;
+
+            const custoExtras = ativosExtra * valExtra;
+            const custoRetencao = qtdInativos * valInativo;
+            
+            const subtotal = valBase + custoExtras + custoRetencao;
+            const valorIva = subtotal * (taxaIva / 100);
+            const totalFinal = subtotal + valorIva;
+
+            let custoDiaAtivo = 0;
+            if (qtdAtivos > 0) {
+                custoDiaAtivo = totalFinal / qtdAtivos / 30;
+            }
+
+            document.getElementById('resSubtotal').innerText = subtotal.toFixed(2) + ' €';
+            document.getElementById('resIva').innerText = valorIva.toFixed(2) + ' €';
+            document.getElementById('resTotal').innerText = totalFinal.toFixed(2) + ' €';
+            document.getElementById('resCustoDia').innerText = custoDiaAtivo.toFixed(2) + ' € / dia';
+        }
+
+        async function carregarConfigMaster() {
+            try {
+                const res = await fetch('/api/master/config', { headers: { 'Authorization': 'Bearer ' + masterToken } });
+                if(res.ok) {
+                    configMasterGlobal = await res.json();
+                    document.getElementById('cfgRazaoSocial').value = configMasterGlobal.razao_social || '';
+                    document.getElementById('cfgNif').value = configMasterGlobal.nif || '';
+                    document.getElementById('cfgMorada').value = configMasterGlobal.morada || '';
+                    document.getElementById('cfgCP').value = configMasterGlobal.codigo_postal || '';
+                    document.getElementById('cfgLocalidade').value = configMasterGlobal.localidade || '';
+                    document.getElementById('cfgEmail').value = configMasterGlobal.email_faturacao || '';
+                    document.getElementById('cfgIban').value = configMasterGlobal.iban || '';
+                    document.getElementById('cfgContrato').value = configMasterGlobal.texto_contrato || modeloContratoPadrao;
+                }
+            } catch (err) { console.error("Erro ao carregar configurações."); }
+        }
+
+        document.getElementById('formConfigMaster').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dados = {
+                razao_social: document.getElementById('cfgRazaoSocial').value, nif: document.getElementById('cfgNif').value,
+                morada: document.getElementById('cfgMorada').value, codigo_postal: document.getElementById('cfgCP').value,
+                localidade: document.getElementById('cfgLocalidade').value, email_faturacao: document.getElementById('cfgEmail').value,
+                iban: document.getElementById('cfgIban').value, texto_contrato: document.getElementById('cfgContrato').value
+            };
+            try {
+                const res = await fetch('/api/master/config', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + masterToken }, body: JSON.stringify(dados) });
+                if(res.ok) { alert('Os dados e o Contrato Base foram gravados no Cofre!'); carregarConfigMaster(); } else { alert('Erro ao gravar.'); }
+            } catch (err) { alert('Erro de comunicação.'); }
+        });
+
+        async function executarArquivamentoFrio() {
+            if(confirm('Tem a certeza que deseja executar o Protocolo de Arquivamento Frio?\n\nO servidor irá procurar todos os turnos e picagens de ponto mais antigos do que 2 anos, extraí-los para um ficheiro protegido e limpá-los da base de dados.')) {
+                try {
+                    const res = await fetch('/api/master/arquivamento-frio', { method: 'POST', headers: { 'Authorization': 'Bearer ' + masterToken } });
+                    const data = await res.json();
+                    if(res.ok) { alert('✅ ' + data.mensagem); } else { alert('❌ Erro: ' + data.erro); }
+                } catch(e) { alert("Erro de comunicação com o servidor."); }
+            }
+        }
+
+        async function purgarAgencia(id, nome) {
+            if(confirm(`⚠️ ALERTA DE PURGA RGPD ⚠️\n\nTem a certeza absoluta que deseja APAGAR DEFINITIVAMENTE o cliente "${nome}" e TODOS os seus dados (funcionários, gestores, escalas e relatórios)?\n\nEsta ação destruirá os dados no cofre e NÃO PODE SER DESFEITA.`)) {
+                try {
+                    const res = await fetch(`/api/admin/agencias/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + masterToken } });
+                    if(res.ok) {
+                        alert(`Purga concluída com sucesso. Todos os dados do cliente "${nome}" foram aniquilados permanentemente.`);
+                        carregarAgencias();
+                    } else {
+                        const d = await res.json(); alert('Erro: ' + d.erro);
+                    }
+                } catch(e) { alert("Erro de comunicação com o servidor."); }
+            }
+        }
+
+        async function carregarAgencias() {
+            try {
+                const res = await fetch('/api/admin/agencias', { headers: { 'Authorization': 'Bearer ' + masterToken } });
+                if(!res.ok) { if(res.status === 401 || res.status === 403) fazerLogout(); return; }
+                
+                listaGlobalAgencias = await res.json();
+                
+                const selFat = document.getElementById('fatCliente');
+                if(selFat) {
+                    selFat.innerHTML = '<option value="ALL">🏢 Todos os Clientes Ativos</option>';
+                    listaGlobalAgencias.forEach(ag => {
+                        if (ag.status === 'ativo' && ag.email !== 'admin@agenda.com') { 
+                             selFat.innerHTML += `<option value="${ag.id}">${sanitizarTexto(ag.nome_agencia)}</option>`;
+                        }
+                    });
+                }
+
+                const tbody = document.getElementById('tabelaAgencias'); 
+                let htmlAgencias = ''; 
+                
+                listaGlobalAgencias.forEach(ag => {
+                    const isMaster = ag.email === 'admin@agenda.com';
+                    const badgeClass = ag.status === 'ativo' ? 'badge-ativo' : 'badge-bloqueado';
+                    const estadoTxt = ag.status === 'ativo' ? 'Ativo' : 'Bloqueado';
+                    
+                    let btnHtml = `<button class="btn-small-view" onclick="verAgencia(${ag.id})">👁 Ver</button>`;
+                    
+                    if(!isMaster) {
+                        btnHtml += `<button class="btn-small-edit" onclick="editarAgencia(${ag.id})">✎</button>`;
+                        
+                        /* 📍 CORREÇÃO AQUI: background cinza para leitura visível e sem esconder ícone */
+                        btnHtml += `<button class="btn-small-view" style="background:#64748b; color: white;" onclick="gerarContratoPdf(${ag.id})">📜 Contrato</button>`;
+                        
+                        if(ag.status === 'ativo') { 
+                            btnHtml += `<button class="btn-action" style="background:var(--warning-color); padding:5px 10px; color:black; border-radius:8px;" onclick="alterarStatus(${ag.id}, 'bloqueado')">Suspender</button>`;
+                        } else { 
+                            btnHtml += `<button class="btn-action" style="background:var(--success-color); padding:5px 10px; border-radius:8px;" onclick="alterarStatus(${ag.id}, 'ativo')">Reativar</button>`; 
+                        }
+                        
+                        const nomeParaPurga = ag.nome_agencia ? ag.nome_agencia.replace(/'/g, "\\'") : '';
+                        btnHtml += `<button class="btn-action" style="background:var(--danger-color); padding:5px 10px; margin-left:5px; border-radius:8px;" onclick="purgarAgencia(${ag.id}, '${nomeParaPurga}')">🗑 Purgar</button>`;
+
+                    } else { btnHtml += `<small style="color:#64748b; margin-left: 5px; font-weight:700;">(Conta Base)</small>`; }
+
+                    const detalhesContrato = isMaster ? '-' : `Base: ${ag.valor_base_mensal || 0}€ (${ag.limite_base_funcionarios || 0} Trab.)<br><small style="color: var(--text-muted); font-weight:500;">Extra: ${ag.valor_extra_funcionario || 0}€ | Inativo: ${ag.valor_extra_inativo || 0}€<br>Vence Dia ${ag.dia_vencimento || 8}</small>`;
+
+                    htmlAgencias += `<tr><td>#${ag.id}</td><td><b>${sanitizarTexto(ag.nome_agencia)}</b><br><small style="color:var(--text-muted);">${sanitizarTexto(ag.email)}</small></td><td>${detalhesContrato}</td><td><span class="badge ${badgeClass}">${estadoTxt}</span></td><td>${btnHtml}</td></tr>`;
+                });
+                
+                tbody.innerHTML = htmlAgencias; 
+            } catch (err) { console.error("Erro ao carregar agências."); }
+        }
+
+        function gerarContratoPdf(id) {
+            const ag = listaGlobalAgencias.find(x => x.id === id); if(!ag) return;
+            let textoBruto = document.getElementById('cfgContrato').value || modeloContratoPadrao;
+            let textoProcessado = textoBruto
+                .replace(/\{\{NOME_MASTER\}\}/g, configMasterGlobal.razao_social || 'Agenda360')
+                .replace(/\{\{NIF_MASTER\}\}/g, configMasterGlobal.nif || 'N/A')
+                .replace(/\{\{MORADA_MASTER\}\}/g, `${configMasterGlobal.morada || ''}, ${configMasterGlobal.codigo_postal || ''} ${configMasterGlobal.localidade || ''}`.trim())
+                .replace(/\{\{IBAN_MASTER\}\}/g, configMasterGlobal.iban || 'A indicar')
+                .replace(/\{\{NOME_CLIENTE\}\}/g, sanitizarTexto(ag.nome_agencia) || '_______________________')
+                .replace(/\{\{NIF_CLIENTE\}\}/g, sanitizarTexto(ag.nif) || '_______________________')
+                .replace(/\{\{MORADA_CLIENTE\}\}/g, `${sanitizarTexto(ag.rua) || ''}, ${sanitizarTexto(ag.codigo_postal) || ''} ${sanitizarTexto(ag.localidade || ag.cidade) || ''}`.trim())
+                .replace(/\{\{REP_CLIENTE\}\}/g, sanitizarTexto(ag.representante_legal) || '_______________________')
+                .replace(/\{\{CARGO_CLIENTE\}\}/g, sanitizarTexto(ag.cargo_representante) || '_______________________')
+                .replace(/\{\{DATA_INICIO\}\}/g, sanitizarTexto(ag.data_inicio_contrato) || '____ / ____ / ________')
+                .replace(/\{\{VALOR_BASE\}\}/g, parseFloat(ag.valor_base_mensal || 0).toFixed(2))
+                .replace(/\{\{LIMITE_BASE\}\}/g, ag.limite_base_funcionarios || 0)
+                .replace(/\{\{VALOR_EXTRA_ATIVO\}\}/g, parseFloat(ag.valor_extra_funcionario || 0).toFixed(2))
+                .replace(/\{\{VALOR_EXTRA_INATIVO\}\}/g, parseFloat(ag.valor_extra_inativo || 0).toFixed(2))
+                .replace(/\{\{DIA_VENCIMENTO\}\}/g, ag.dia_vencimento || 8)
+                .replace(/\{\{REGIME_IVA\}\}/g, sanitizarTexto(ag.regime_iva) || '+ IVA');
+
+            textoProcessado = textoProcessado.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            textoProcessado = textoProcessado.replace(/\n/g, '<br>');
+
+            const printArea = document.getElementById('printAreaContrato');
+            printArea.innerHTML = `<div style="text-align: center; margin-bottom: 30px;"><img src="/logo_agenda_360.jpeg" style="max-height: 80px;" onerror="this.style.display='none'"></div>${textoProcessado}`;
+            
+            // 📍 CORREÇÃO AQUI: Mostra o div antes de imprimir, para evitar sair branco.
+            printArea.style.display = 'block';
+            window.print();
+            printArea.style.display = 'none';
+        }
+
+        function verAgencia(id) {
+            const ag = listaGlobalAgencias.find(x => x.id === id); if(!ag) return;
+            let html = `<div class="detalhe-linha"><strong>Nome da Agência:</strong> ${sanitizarTexto(ag.nome_agencia) || '-'}</div><div class="detalhe-linha"><strong>E-mail de Acesso:</strong> ${sanitizarTexto(ag.email) || '-'}</div><div class="detalhe-linha"><strong>NIF:</strong> ${sanitizarTexto(ag.nif) || '-'}</div><div class="detalhe-linha"><strong>Representante:</strong> ${sanitizarTexto(ag.representante_legal) || '-'} (${sanitizarTexto(ag.cargo_representante) || '-'})</div><div class="detalhe-linha"><strong>Morada Fiscal:</strong> ${sanitizarTexto(ag.rua) || '-'}, ${sanitizarTexto(ag.codigo_postal) || '-'} ${sanitizarTexto(ag.localidade || ag.cidade) || '-'}</div><h3 style="margin-top: 20px; color: var(--text-main); font-size: 1.1rem; font-weight: 700; border-bottom: 1px dashed var(--border-soft); padding-bottom: 5px; margin-bottom: 15px;">Condições do Contrato</h3><div class="detalhe-linha"><strong>Início do Contrato:</strong> ${sanitizarTexto(ag.data_inicio_contrato) || '-'}</div><div class="detalhe-linha"><strong>Limite Base (Func.):</strong> ${ag.limite_base_funcionarios || 0} trabalhadores</div><div class="detalhe-linha"><strong>Valor Base Mensal:</strong> ${ag.valor_base_mensal || 0} €</div><div class="detalhe-linha"><strong>Extra por Ativo:</strong> ${ag.valor_extra_funcionario || 0} €</div><div class="detalhe-linha"><strong>Manutenção por Inativo:</strong> ${ag.valor_extra_inativo || 0} €</div><div class="detalhe-linha"><strong>Data de Vencimento:</strong> Dia ${ag.dia_vencimento || 8} de cada mês</div><div class="detalhe-linha"><strong>Regime de IVA:</strong> ${sanitizarTexto(ag.regime_iva) || '+ IVA'}</div><div class="detalhe-linha" style="margin-top: 15px;"><strong>Estado Atual:</strong> <span class="badge ${ag.status === 'ativo' ? 'badge-ativo' : 'badge-bloqueado'}">${ag.status.toUpperCase()}</span></div>`;
+            document.getElementById('modalVerTitulo').innerText = "Ficha Completa do Cliente"; document.getElementById('modalVerConteudo').innerHTML = html; document.getElementById('modalVer').style.display = 'flex';
+        }
+
+        function editarAgencia(id) {
+            const ag = listaGlobalAgencias.find(x => x.id === id); if(!ag) return;
+            document.getElementById('agIdEdit').value = ag.id; document.getElementById('agNome').value = ag.nome_agencia || ''; document.getElementById('agEmail').value = ag.email || ''; document.getElementById('agEmail').readOnly = true; document.getElementById('agEmail').style.background = '#f1f5f9'; document.getElementById('blocoSenha').style.display = 'none'; document.getElementById('agNif').value = ag.nif || ''; document.getElementById('agRepLegal').value = ag.representante_legal || ''; document.getElementById('agCargo').value = ag.cargo_representante || ''; document.getElementById('agRua').value = ag.rua || ''; document.getElementById('agCP').value = ag.codigo_postal || ''; document.getElementById('agLocalidade').value = ag.localidade || ''; document.getElementById('agDataInicio').value = ag.data_inicio_contrato || ''; document.getElementById('agLimFunc').value = ag.limite_base_funcionarios || 0; document.getElementById('agValBase').value = ag.valor_base_mensal || 0; document.getElementById('agValExtraAtivo').value = ag.valor_extra_funcionario || 0; document.getElementById('agValExtraInativo').value = ag.valor_extra_inativo || 0; document.getElementById('agDiaVencimento').value = ag.dia_vencimento || 8; document.getElementById('agIva').value = ag.regime_iva || '+ IVA'; document.getElementById('tituloCardAgencia').innerText = "Editar Contrato do Cliente"; document.getElementById('btnSalvarAgencia').innerText = "Atualizar Dados do Contrato"; document.getElementById('btnCancelarAgencia').style.display = 'inline-block'; window.scrollTo(0,0);
+        }
+
+        function cancelarEdicaoAgencia() { document.getElementById('formNovaAgencia').reset(); document.getElementById('agIdEdit').value = ''; document.getElementById('agEmail').readOnly = false; document.getElementById('agEmail').style.background = 'var(--bg-color)'; document.getElementById('blocoSenha').style.display = 'block'; document.getElementById('tituloCardAgencia').innerText = "Registar Nova Empresa Cliente"; document.getElementById('btnSalvarAgencia').innerText = "Gravar e Criar Contrato"; document.getElementById('btnCancelarAgencia').style.display = 'none'; }
+
+        document.getElementById('formNovaAgencia').addEventListener('submit', async (e) => {
+            e.preventDefault(); const idEdit = document.getElementById('agIdEdit').value;
+            const dados = { nome_agencia: document.getElementById('agNome').value, nif: document.getElementById('agNif').value, rua: document.getElementById('agRua').value, codigo_postal: document.getElementById('agCP').value, localidade: document.getElementById('agLocalidade').value, cidade: document.getElementById('agLocalidade').value, representante_legal: document.getElementById('agRepLegal').value, cargo_representante: document.getElementById('agCargo').value, data_inicio_contrato: document.getElementById('agDataInicio').value, limite_base_funcionarios: document.getElementById('agLimFunc').value, valor_base_mensal: document.getElementById('agValBase').value, valor_extra_funcionario: document.getElementById('agValExtraAtivo').value, valor_extra_inativo: document.getElementById('agValExtraInativo').value, dia_vencimento: document.getElementById('agDiaVencimento').value, regime_iva: document.getElementById('agIva').value };
+            if(idEdit) {
+                const res = await fetch(`/api/admin/agencias/${idEdit}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + masterToken }, body: JSON.stringify(dados) });
+                if(res.ok) { alert('Contrato atualizado!'); cancelarEdicaoAgencia(); carregarAgencias(); } else { alert('Erro ao atualizar.'); }
+            } else {
+                dados.email = document.getElementById('agEmail').value; dados.senha = document.getElementById('agSenha').value;
+                if(!dados.senha) return alert("A senha inicial é obrigatória para um novo cliente.");
+                const res = await fetch('/api/admin/agencias/nova', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + masterToken }, body: JSON.stringify(dados) });
+                const result = await res.json();
+                if(res.ok) { alert('Cliente registado com sucesso!'); cancelarEdicaoAgencia(); carregarAgencias(); } else { alert('Erro: ' + result.erro); }
+            }
+        });
+
+        async function alterarStatus(id, novoStatus) { const acao = novoStatus === 'bloqueado' ? 'suspender' : 'reativar'; if(confirm(`Tem a certeza que deseja ${acao} o acesso a este cliente?`)) { await fetch('/api/admin/agencias/status', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + masterToken }, body: JSON.stringify({ id, novo_status: novoStatus }) }); carregarAgencias(); } }
+
+        // 📍 🖨️ IMPRESSÃO BLINDADA E LIMPA
+        function imprimirFaturacao() { 
+            if (dadosFaturacaoGlobal.length === 0) return alert('Por favor, gere um extrato primeiro antes de imprimir.');
+            
+            const selectMes = document.getElementById('fatMes');
+            const nomeMes = selectMes.options[selectMes.selectedIndex].text;
+            const ano = document.getElementById('fatAno').value;
+            const selectCli = document.getElementById('fatCliente');
+            const nomeCli = selectCli.options[selectCli.selectedIndex].text;
+            
+            document.getElementById('lblPrintExtratoMesHidden').innerText = `Período: ${nomeMes} de ${ano} | Filtro: ${nomeCli} | Emitido a ${new Date().toLocaleDateString('pt-PT')}`;
+            
+            // Clona a tabela (já processada) e injeta no div escondido
+            document.getElementById('printTabelaFaturacao').innerHTML = document.getElementById('tabelaFaturacao').innerHTML;
+            
+            document.getElementById('printAreaFaturacao').style.display = 'block';
+            window.print(); 
+            document.getElementById('printAreaFaturacao').style.display = 'none';
+        }
+
+        // 📍 📊 EXPORTAÇÃO EXCEL
+        function exportarExcelFaturacao() {
+            if (dadosFaturacaoGlobal.length === 0) return alert('Não há dados faturados para exportar.');
+            
+            const selectMes = document.getElementById('fatMes');
+            const nomeMes = selectMes.options[selectMes.selectedIndex].text;
+            const ano = document.getElementById('fatAno').value;
+
+            let csv = '\uFEFFNIF;Cliente;Base Mensal;Ativos (No Mes);Inativos;Subtotal (Sem IVA);Imposto;IVA a Pagar;TOTAL A FATURAR;Dia de Vencimento\n';
+            
+            dadosFaturacaoGlobal.forEach(ag => {
+                let taxaIva = 0;
+                if (ag.regime_iva && ag.regime_iva.includes('+ IVA')) taxaIva = 0.23;
+                let valorIva = ag.subtotal * taxaIva;
+                let totalFinal = ag.subtotal + valorIva;
+
+                csv += `"${ag.nif || ''}";"${ag.nome_agencia}";${ag.valor_base.toFixed(2)};${ag.ativos_totais};${ag.inativos_totais};${ag.subtotal.toFixed(2)};"${ag.regime_iva}";${valorIva.toFixed(2)};${totalFinal.toFixed(2)};${ag.dia_vencimento}\n`;
+            });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+            link.setAttribute("download", `Faturacao_Agenda360_${nomeMes}_${ano}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 📍 🔍 MODAL: LISTA NOMINAL DE TRABALHADORES
+        window.verDetalheTrabalhadores = function(agId, nomeAgencia) {
+            const ag = dadosFaturacaoGlobal.find(x => x.id === agId);
+            if(!ag || !ag.detalhe_trabalhadores) return alert("Sem dados detalhados para mostrar.");
+
+            let html = `<p style="margin-bottom: 15px; color: var(--text-muted); font-size:0.95rem;">Lista de trabalhadores processados no ciclo faturado e o respetivo impacto financeiro.</p>`;
+            html += `<div style="max-height: 50vh; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0; min-width: 400px;">
+                            <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 5;">
+                                <tr>
+                                    <th style="padding: 12px 15px; border-bottom: 2px solid #cbd5e1; text-align: left; color: #334155;">Nome do Trabalhador</th>
+                                    <th style="padding: 12px 15px; border-bottom: 2px solid #cbd5e1; text-align: left; color: #334155;">Estado e Retenção no Ciclo</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            if (ag.detalhe_trabalhadores.length === 0) {
+                html += `<tr><td colspan="2" style="padding: 15px; text-align:center; color: #64748b;">Nenhum trabalhador associado a esta empresa.</td></tr>`;
+            } else {
+                ag.detalhe_trabalhadores.forEach(t => {
+                    let corEstado = t.estado_cobranca.includes('Ativo') ? 'color: var(--success-color); font-weight: bold;' : 'color: var(--text-muted);';
+                    html += `<tr style="background: white;">
+                        <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-weight:600;">${sanitizarTexto(t.nome)}</td>
+                        <td style="padding: 12px 15px; border-bottom: 1px solid #e2e8f0; ${corEstado}">${sanitizarTexto(t.estado_cobranca)}</td>
+                    </tr>`;
+                });
+            }
+            html += `</tbody></table></div>`;
+
+            document.getElementById('modalDetalheFatTitulo').innerText = `Auditoria de Faturação: ${nomeAgencia}`;
+            document.getElementById('modalDetalheFatConteudo').innerHTML = html;
+            document.getElementById('modalDetalheFat').style.display = 'flex';
+        };
+
+        // 📍 MOTOR DE EXTRATO MENSAL
+        async function carregarFaturacao() {
+            const mes = document.getElementById('fatMes').value;
+            const ano = document.getElementById('fatAno').value;
+            const clienteId = document.getElementById('fatCliente').value;
+
+            const btn = document.querySelector('button[onclick="carregarFaturacao()"]');
+            const txtOriginal = btn.innerHTML;
+            btn.innerHTML = '⏳ A processar...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/master/faturacao?mes=${mes}&ano=${ano}`, { headers: { 'Authorization': 'Bearer ' + masterToken } });
+                if(!res.ok) { btn.innerHTML = txtOriginal; btn.disabled = false; return; }
+                
+                const dadosBase = await res.json();
+                
+                let dadosFaturacao = dadosBase;
+                if (clienteId !== 'ALL') {
+                    dadosFaturacao = dadosBase.filter(ag => ag.id == clienteId);
+                }
+
+                dadosFaturacaoGlobal = dadosFaturacao; 
+                
+                const tbody = document.getElementById('corpoFaturacao'); 
+                const tfoot = document.getElementById('rodapeFaturacao');
+                
+                if(dadosFaturacao.length === 0) { 
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #64748b; padding: 30px;">Nenhum cliente atende aos critérios neste período.</td></tr>'; 
+                    tfoot.style.display = 'none';
+                    btn.innerHTML = txtOriginal; btn.disabled = false;
+                    return; 
+                }
+                
+                let htmlFaturacao = ''; 
+                let globalSubtotal = 0;
+                let globalIva = 0;
+                let globalTotal = 0;
+
+                dadosFaturacao.forEach(ag => {
+                    let taxaIva = 0;
+                    if (ag.regime_iva && ag.regime_iva.includes('+ IVA')) taxaIva = 0.23;
+                    let valorIva = ag.subtotal * taxaIva;
+                    let totalFinal = ag.subtotal + valorIva;
+
+                    globalSubtotal += ag.subtotal;
+                    globalIva += valorIva;
+                    globalTotal += totalFinal;
+
+                    // Textos Explicativos
+                    let txtExtra = ag.ativos_extra_num > 0 
+                        ? `<br><small style="color:var(--danger-color); font-weight:600;">+ ${ag.ativos_extra_num} extra (${ag.custo_ativos_extra.toFixed(2)}€)</small>` 
+                        : `<br><small style="color:var(--success-color); font-weight:600;">Sem extras</small>`;
+                    
+                    let txtInativos = ag.inativos_totais > 0
+                        ? `<b>${ag.inativos_totais}</b><br><small style="color:var(--text-muted);">${ag.custo_inativos.toFixed(2)} €</small>`
+                        : `0<br><small style="color:var(--text-muted);">0.00 €</small>`;
+
+                    let btnDetalhe = `<button class="no-print" style="margin-top: 8px; font-size:0.75rem; padding: 4px 8px; border-radius: 6px; background: #f1f5f9; color: var(--primary-color); border: 1px solid #cbd5e1; cursor: pointer; width: 100%; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; transition: 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'" onclick="verDetalheTrabalhadores(${ag.id}, '${sanitizarTexto(ag.nome_agencia).replace(/'/g, "\\'")}')">📄 Ver Detalhe</button>`;
+                    
+                    // 📍 ETIQUETA DO IVA CORRIGIDA AQUI
+                    htmlFaturacao += `<tr>
+                        <td><b>${sanitizarTexto(ag.nome_agencia)}</b><br><small style="color:var(--text-muted);">NIF: ${sanitizarTexto(ag.nif) || 'Não def.'}</small></td>
+                        <td class="nowrap" style="color:var(--text-muted);">
+                            <span style="font-weight:600; color:var(--text-color);">${ag.valor_base.toFixed(2)} €</span><br><small>Inclui ${ag.limite_base} trab.</small>
+                        </td>
+                        <td class="nowrap">
+                            <b style="color:var(--primary-color); font-size:1.05rem;">${ag.ativos_totais}</b> ${txtExtra}<br>${btnDetalhe}
+                        </td>
+                        <td class="nowrap">${txtInativos}</td>
+                        <td class="nowrap" style="font-weight: bold; color: var(--text-color);">${ag.subtotal.toFixed(2)} €</td>
+                        <td class="nowrap"><span class="badge" style="background-color: #64748b; color: white;">${sanitizarTexto(ag.regime_iva)}</span></td>
+                        <td class="nowrap" style="background: #f0fdf4; border-left: 2px solid var(--success-color); font-weight: 800; font-size: 1.1rem; color: var(--success-color);">${totalFinal.toFixed(2)} €</td>
+                        <td class="nowrap"><b style="color:var(--text-main);">Dia ${ag.dia_vencimento}</b></td>
+                    </tr>`;
+                });
+                
+                tbody.innerHTML = htmlFaturacao; 
+                
+                document.getElementById('mrrSubtotal').innerText = globalSubtotal.toFixed(2) + ' €';
+                document.getElementById('mrrIva').innerText = globalIva.toFixed(2) + ' €';
+                document.getElementById('mrrTotal').innerText = globalTotal.toFixed(2) + ' €';
+                tfoot.style.display = 'table-footer-group';
+
+            } catch (err) { console.error("Erro na matemática da faturação."); }
+
+            btn.innerHTML = txtOriginal; 
+            btn.disabled = false;
+        }
+
+        document.getElementById('formSenhaMaster').addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const senhaNova = document.getElementById('senhaNova').value; 
+            if(!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(senhaNova)) return alert('A nova senha não cumpre os requisitos! Mínimo 8 caracteres, 1 Maiúscula e 1 Número.'); 
+            
+            const btn = e.target.querySelector('button');
+            btn.innerText = "A atualizar..."; btn.disabled = true;
+
+            try { 
+                const res = await fetch('/api/master/atualizar-senha', { 
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + masterToken }, 
+                    body: JSON.stringify({ nova_senha: senhaNova }) 
+                }); 
+                
+                if(res.ok) { 
+                    const data = await res.json();
+                    alert('✅ ' + data.mensagem); 
+                    document.getElementById('formSenhaMaster').reset(); 
+                } else { 
+                    const errorData = await res.json(); 
+                    alert('❌ Erro: ' + (errorData.erro || 'Falha.')); 
+                } 
+            } catch (error) { 
+                alert('Erro de comunicação com o servidor.'); 
+            } 
+            btn.innerText = "Atualizar Senha no Servidor"; btn.disabled = false;
+        });
+
+        document.getElementById('formPinMaster').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pinNovo = document.getElementById('pinNovo').value;
+            
+            if(pinNovo.length < 6) return alert('O PIN deve ter pelo menos 6 caracteres!');
+            
+            try {
+                const res = await fetch('/api/master/atualizar-pin', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + masterToken },
+                    body: JSON.stringify({ novo_pin: pinNovo })
+                });
+                const data = await res.json();
+                
+                if(res.ok) {
+                    alert('✅ ' + data.mensagem);
+                    document.getElementById('formPinMaster').reset();
+                } else {
+                    alert('❌ Erro: ' + data.erro);
+                }
+            } catch (error) { alert('Erro ao contactar o servidor.'); }
+        });
+
+        carregarAgencias();
+        carregarConfigMaster();
+        calcularSimulador(); 
+    </script>
+</body>
+</html>

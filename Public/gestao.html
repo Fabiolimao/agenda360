@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Painel de Gestão - Agenda360</title>
+    <link rel="icon" type="image/png" href="/logo_fav.png">
+    <link rel="stylesheet" href="gestao.css">
+    
+  <!-- ESTILOS DO WIDGET TO DO 360 EMBUTIDOS NATIVAMENTE -->
+    <style id="todo-widget-styles">
+        #todo-widget-container { display: none; position: fixed; bottom: 30px; right: 30px; z-index: 9999; font-family: 'Outfit', sans-serif; }
+        #todo-avatar-wrapper { display: flex; flex-direction: column; align-items: center; }
+        #todo-drag-handle { background: var(--primary-color); color: white; font-size: 11px; padding: 4px 14px; border-radius: 20px; cursor: grab; margin-bottom: 8px; text-align: center; box-shadow: 0 4px 10px rgba(0,70,139,0.2); user-select: none; font-weight: 700; }
+        #todo-drag-handle:active { cursor: grabbing; background: #003366; }
+        #todo-avatar-btn { width: 80px; height: 80px; border-radius: 50%; background-color: white; border: 3px solid var(--primary-color); box-shadow: 0 10px 25px -5px rgba(0,70,139,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); padding: 3px; overflow: hidden; }
+        #todo-avatar-btn:hover { transform: scale(1.08) translateY(-2px); }
+        #todo-avatar-btn img { width: 100%; height: 100%; border-radius: 50%; object-fit: contain; pointer-events: none; }
+        #todo-panel { display: none; position: absolute; width: 90vw; max-width: 360px; background: var(--card-bg); border-radius: 24px; box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.2); padding: 25px; border: 1px solid var(--border-soft); }
+        #todo-form-nova-tarefa, #todo-form-editar-tarefa, #todo-form-duplicar-tarefa { display: none; background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1.5px dashed var(--border-soft); }
+        .todo-input-rapido { width: 100%; padding: 12px 14px; margin-bottom: 10px; border: 1.5px solid var(--border-soft); border-radius: 10px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; background: white; }
+        .todo-input-rapido:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 70, 139, 0.1); }
+        .todo-acoes-formulario { display: flex; gap: 10px; }
+        .todo-btn-cancelar, .todo-btn-guardar { flex: 1; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: transform 0.1s, box-shadow 0.2s; }
+        .todo-btn-cancelar { background: #e2e8f0; color: #475569; }
+        .todo-btn-cancelar:hover { background: #cbd5e1; }
+        .todo-btn-guardar { background: var(--primary-color); color: white; box-shadow: 0 4px 10px rgba(0, 70, 139, 0.2); }
+        .todo-btn-guardar:hover { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(0, 70, 139, 0.3); }
+        .todo-btn-toggle-form { background: var(--bg-color); border: none; color: var(--primary-color); font-weight: 800; cursor: pointer; font-size: 0.9em; padding: 8px 12px; border-radius: 8px; transition: 0.2s; }
+        .todo-btn-toggle-form:hover { background: var(--primary-color); color: white; }
+        #todo-lista-tarefas { max-height: 250px; overflow-y: auto; padding-right: 5px; margin-bottom: 10px; }
+        #todo-lista-tarefas::-webkit-scrollbar { width: 6px; }
+        #todo-lista-tarefas::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .todo-task-item { background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px; margin-bottom: 10px; border-left: 4px solid var(--warning-color); transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .todo-task-item:hover { transform: translateX(3px); border-color: #cbd5e1; box-shadow: 0 6px 10px rgba(0,0,0,0.04); }
+        .todo-task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .todo-task-name { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
+        .todo-task-time { font-weight: 800; color: var(--danger-color); background: #fef2f2; padding: 4px 8px; border-radius: 8px; font-size: 0.8rem; border: 1px dashed #fca5a5; }
+        .todo-task-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+        .todo-btn-action { border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 700; transition: transform 0.1s; }
+        .todo-btn-action:hover { transform: translateY(-1px); filter: brightness(1.05); }
+        .todo-btn-edit { background: #f1f5f9; color: #475569; }
+        .todo-btn-dup { background: #e0f2fe; color: var(--secondary); } 
+        .todo-btn-done { background: #dcfce7; color: #166534; }
+        .todo-btn-wait { background: #fef3c7; color: #b45309; }
+        .todo-status-done { border-left-color: var(--success-color); background: #f0fdf4; opacity: 0.7; }
+        .todo-status-lost { border-left-color: var(--danger-color); background: #fef2f2; opacity: 0.7; }
+        .todo-hidden-actions { display: none !important; }
+        .todo-panel-footer-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; border-top: 1px dashed var(--border-soft); padding-top: 15px; }
+    </style>  
+</head>
+<body>
+
+    <div id="screenForcedPassword" class="modal-overlay-content" style="z-index: 9999; background: var(--bg-color); flex-direction: column; display: none;">
+        
+            <div class="card" style="max-width: 500px; text-align: center; margin-top: 50px;">
+                    
+            <img src="/logo_agenda_360.jpeg" alt="Agenda360 Logo" style="max-height: 60px; border-radius: 8px; margin-bottom: 15px;" onerror="this.style.display='none'">
+            <h2 style="color: var(--danger-color); justify-content: center; border: none; margin-bottom: 5px;">Segurança Obrigatória</h2>
+            <p style="color: #64748b; margin-bottom: 25px; font-size: 0.95rem; line-height: 1.5;">O seu acesso foi configurado com uma senha provisória. Por favor, defina a sua Senha Pessoal definitiva.</p>
+            <form id="formForcedPassword">
+                <div class="form-group" style="text-align: left;">
+                    <label>Nova Senha (Mín. 8 Caracteres, 1 Maiúscula, 1 Número)</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="forceNovaSenha1" required>
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('forceNovaSenha1', this); return false;">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label>Confirmar Nova Senha</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="forceNovaSenha2" required>
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('forceNovaSenha2', this); return false;">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-save" style="margin-top: 10px;">Gravar e Aceder ao Sistema</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalValidarPonto" class="modal-overlay-content">
+        <div class="modal-box">
+            <span class="close-btn" onclick="document.getElementById('modalValidarPonto').style.display='none'">&times;</span>
+            <h2 style="color: var(--warning-color); border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">🛡️ Validar Ponto de Saída</h2>
+            <div id="conteudoValidacaoPonto" style="margin-bottom: 20px; font-size: 0.95rem; line-height: 1.5; color: #334155;"></div>
+            <div class="form-group">
+                <label>Observações / Ocorrências (Opcional)</label>
+                <input type="text" id="txtObsValidacao" placeholder="Ex: Saiu 15 minutos mais cedo por doença...">
+            </div>
+            <button class="btn-save" style="background: var(--warning-color); color: black;" onclick="confirmarValidacaoPonto()">Confirmar e Validar Turno</button>
+        </div>
+    </div>
+
+    <div id="mobileOverlay" class="mobile-overlay" onclick="fecharSidebar()"></div>
+
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="/logo_agenda_360.jpeg" alt="Logo" style="max-width: 85%; border-radius: 8px; margin-bottom: 8px;" onerror="this.style.display='none'">
+            <div style="font-size: 0.95rem; font-weight: 500; color: #94a3b8;">Painel Operacional</div>
+        </div>
+        <ul class="nav-links">
+            <li id="menuDashboard"><a class="active" onclick="navegar('dashboard', this)">Visão Geral & Calendário</a></li>
+            <li id="menuSolicitacoes"><a onclick="navegar('solicitacoes', this)">🛎️ Pedidos de Extras</a></li>
+            <li id="menuFunc"><a onclick="navegar('funcionarios', this)">Funcionários</a></li>
+            <li id="menuEmpresas"><a onclick="navegar('empresas', this)">Grupos e Unidades</a></li>
+            <li id="menuEscalas"><a onclick="navegar('escalas', this)">Escalas e Agendamento</a></li>
+            <li id="menuAcessos"><a onclick="navegar('acessos', this)">Acessos da Empresa</a></li>
+            <li id="menuRelatorios"><a onclick="navegar('relatorios', this)">Relatórios e Fecho</a></li>
+            
+            <li><a href="manual.html" target="_blank">📘 Central de Ajuda</a></li>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 20px;">
+            <li id="menuToDo">
+                <a onclick="abrirWidgetTodo()" style="display: flex; align-items: center; gap: 10px; color: #a5b4fc; font-weight: bold; cursor: pointer; padding: 10px; background: rgba(108, 99, 255, 0.1); border-radius: 8px; transition: background 0.2s;">
+                    <img src="to_do_logo.jpg" alt="To Do 360" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #6C63FF; box-shadow: 0 2px 5px rgba(0,0,0,0.3); object-fit: contain; background: white;" onerror="this.style.display='none'">
+                    <span>Assistente To Do</span>
+                </a>
+            </li>
+        </ul>
+        <button class="btn-logout" onclick="fazerLogout()">Sair do Sistema</button>
+    </nav>
+
+    <div class="main-content">
+        <header class="topbar">
+            <div style="display: flex; align-items: center;">
+                <button class="menu-toggle" onclick="abrirSidebar()">☰</button>
+                <h1 id="tituloAppMaster" style="font-size: 1.5rem; color: var(--text-color); font-weight: 800; margin: 0; letter-spacing: -0.5px;">Agenda<span style="color: var(--primary-color);">360</span></h1>
+            </div>
+            <div class="info-agencia" style="font-weight: 600; color: #475569;">Agência: <span id="nome-agencia-topbar" style="color: var(--primary-color);"></span></div>
+        </header>
+
+        <section id="dashboard" class="page-content active">
+            <div id="boxAlertasDashboard"></div>
+            
+            <div class="card" id="cardLinkApp">
+                <h2>Acessos Rápidos</h2>
+                <button class="btn-action" style="width: 100%; max-width: 300px;" onclick="copiarLinkApp()">📱 Copiar Link da App Mobile</button>
+                <p id="msgCopia" style="color: var(--success-color); font-weight: bold; margin-top: 10px; display: none;">Link copiado!</p>
+            </div>
+            
+            <div class="card">
+                <h2>Calendário Operacional</h2>
+                <div class="form-row" style="align-items: flex-end;">
+                    <div class="form-group" id="containerCalFunc"><label>Filtrar por Funcionário</label><select id="calFunc" onchange="gerarCalendario()"><option value="">-- Todos --</option></select></div>
+                    <div class="form-group" id="containerCalUnidade"><label>Filtrar por Empresa / Unidade</label><select id="calUnidade" onchange="gerarCalendario()"><option value="">-- Todas --</option></select></div>
+                    <div class="form-group"><label>Mês</label><select id="calMes" onchange="gerarCalendario()">
+                        <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+                        <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+                        <option value="6" selected>Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+                        <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+                    </select></div>
+                    <div class="form-group"><label>Ano</label><input type="number" id="calAno" value="2026" onchange="gerarCalendario()"></div>
+                    
+                    <div class="form-group" style="flex: 0; min-width: auto;">
+                        <button class="btn-action" style="background: var(--info-color); white-space: nowrap; height: 42px;" onclick="abrirModalMapaSemanal()">🖨️ Mapa Semanal</button>
+                    </div>
+                </div>
+                <div class="calendario-container">
+                    <div class="cal-header-row"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
+                    <div class="cal-grid" id="gridCalendario"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECÇÃO: SOLICITAÇÕES -->
+        <section id="solicitacoes" class="page-content">
+            
+            <div class="card" id="boxNovoPedidoCliente" style="display: none; border-left: 4px solid var(--warning-color); background: #fffbeb;">
+                <h2 style="color: #b45309; border-bottom-color: #fde68a;">Novo Pedido de Equipa (Extra)</h2>
+                <p style="color: #78350f; font-size: 0.9rem; margin-bottom: 15px;">Indique as suas necessidades. A Agência receberá o pedido em tempo real.</p>
+                <form id="formSolicitacaoExtra">
+                    <div class="form-row" style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1.5px solid var(--border-soft);">
+                        <div style="width: 100%;">
+                            <label class="toggle-wrapper" id="lblToggleSol">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="solMultiplo" onchange="toggleMultiploSol()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span>📅 Modo de Pedido Múltiplo</span><br>
+                                    <small>Solicitar equipa para vários dias de uma só vez</small>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="divConfigMultiploSol" style="display: none; width: 100%; gap: 15px; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-soft);">
+                            <div class="form-group" style="max-width:200px;"><label>Até ao dia</label><input type="date" id="solDataAte"></div>
+                            <div class="form-group" style="flex: 2;"><label>Repetir nestes dias da semana:</label>
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px; background:var(--bg-color); padding:10px; border-radius:8px; border:1px solid var(--border-soft);">
+                                    <label><input type="checkbox" class="dia-semana-sol" value="1" checked> Seg</label><label><input type="checkbox" class="dia-semana-sol" value="2" checked> Ter</label><label><input type="checkbox" class="dia-semana-sol" value="3" checked> Qua</label><label><input type="checkbox" class="dia-semana-sol" value="4" checked> Qui</label><label><input type="checkbox" class="dia-semana-sol" value="5" checked> Sex</label><label><input type="checkbox" class="dia-semana-sol" value="6"> Sáb</label><label><input type="checkbox" class="dia-semana-sol" value="0"> Dom</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row"><div class="form-group" style="flex: 2;"><label>Unidade / Local de Trabalho</label><select id="solUnidade" required></select></div><div class="form-group" style="flex: 1;"><label>Função Desejada</label><select id="solFuncao" required></select></div><div class="form-group" style="flex: 1;"><label>Qtd. de Pessoas</label><input type="number" id="solQuantidade" value="1" min="1" required></div></div>
+                    <div class="form-row"><div class="form-group"><label id="lblDataSolIn">Data do Serviço (A partir de)</label><input type="date" id="solDataIn" required></div><div class="form-group"><label>Hora de Entrada</label><input type="time" id="solHoraIn" required></div><div class="form-group"><label>Hora de Saída</label><input type="time" id="solHoraOut" required></div></div>
+                    
+                    <div class="form-row" style="background: white; padding: 15px; border-radius: 12px; border: 1.5px solid #fcd34d; align-items: center;">
+                        <div style="width: 100%; max-width: 300px;">
+                            <label class="toggle-wrapper" style="margin: 0; background: #fffbeb; border-color: #fcd34d;">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="solPausa" onchange="togglePausaSol()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span style="color: #b45309;">☕ Tem Pausa de Descanso?</span>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="form-group" id="divSolMinutos" style="display: none; margin: 0; flex: 1;">
+                            <label style="color: #b45309;">Qtd. Minutos de Pausa</label>
+                            <input type="number" id="solMinutos" value="0" style="border: 1px solid #fcd34d;">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-save" style="background: var(--warning-color); color: black; margin-top: 15px; max-width: 300px;">Enviar Pedido à Agência</button>
+                </form>
+            </div>
+            <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--border-soft); padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                    <h2 id="tituloListaPedidos" style="margin: 0; border: none; padding: 0;">A carregar...</h2>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="btnAbaSolPendentes" class="btn-action" style="background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onclick="mudarAbaSolicitacoes('pendentes')">⏳ A Atender</button>
+                        <button id="btnAbaSolHistorico" class="btn-action" style="background: #e2e8f0; color: #475569; padding: 8px 16px; border-radius: 8px; font-weight: bold; box-shadow: none;" onclick="mudarAbaSolicitacoes('historico')">✅ Histórico</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table><thead><tr><th>Data Solicitada</th><th>Local & Função</th><th>Horário & Pausa</th><th>Estado da Alocação</th><th>Ações</th></tr></thead><tbody id="tabelaSolicitacoes"></tbody></table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECÇÃO: FUNCIONÁRIOS -->
+        <section id="funcionarios" class="page-content">
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid var(--border-soft); padding-bottom: 15px; flex-wrap: wrap;">
+                <button id="btnAbaFuncLista" class="btn-action" style="background: var(--primary-color); color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onclick="mudarAbaFunc('lista')">📋 Lista de Equipa</button>
+                <button id="btnAbaFuncFicha" class="btn-action" style="background: #e2e8f0; color: #475569; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: none;" onclick="mudarAbaFunc('ficha')">👤 Adicionar / Editar Individual</button>
+                <button id="btnAbaFuncImport" class="btn-action" style="background: #e2e8f0; color: #475569; padding: 10px 20px; border-radius: 8px; font-weight: bold; box-shadow: none;" onclick="mudarAbaFunc('import')">📥 Importação Excel (Em Massa)</button>
+            </div>
+
+            <div id="abaFuncLista" class="aba-func-content" style="display: block;">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; border-bottom: 1px dashed var(--border-soft); padding-bottom: 15px;">
+                        <h2 style="margin: 0; border: none; padding: 0;">Lista de Funcionários</h2>
+                        <div style="flex: 1; min-width: 260px; max-width: 400px; position: relative;">
+                            <span style="position: absolute; left: 14px; top: 13px; font-size: 1.1rem; color: #94a3b8;">🔍</span>
+                            <input type="text" id="pesquisaFunc" onkeyup="filtrarFuncionariosPorNome()" placeholder="Pesquisar por nome, NIF ou telefone..." style="padding-left: 45px; margin-bottom: 0; border-radius: 30px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); background: white;">
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead><tr><th>Nome</th><th>NIF / Telemóvel</th><th class="esconder-mobile">E-mail</th><th>Estado</th><th>Ações</th></tr></thead>
+                            <tbody id="tabelaFuncionarios"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="abaFuncFicha" class="aba-func-content" style="display: none;">
+                <div class="card">
+                    <h2 id="tituloFunc">Ficha Individual de Funcionário</h2>
+                    <form id="formFuncionario">
+                        <input type="hidden" id="fIdEdit">
+                        <div class="form-row">
+                            <div class="form-group"><label>Nome Completo</label><input type="text" id="fNome" required></div>
+                            <div class="form-group"><label>E-mail</label><input type="email" id="fEmail" required></div>
+                            <div class="form-group"><label>Telemóvel</label><input type="tel" id="fTel" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>NIF</label><input type="text" id="fNif" required></div>
+                            <div class="form-group"><label>Nacionalidade</label><input type="text" id="fNac"></div>
+                            <div class="form-group"><label>Idiomas</label><input type="text" id="fIdiomas"></div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group" style="width: 100%;">
+                                <label class="toggle-wrapper" id="lblToggleSenhaFunc" style="margin: 0; background: #fffbeb; border-color: #fcd34d;">
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="toggleEditaSenhaFunc" onchange="document.getElementById('boxSenhaFunc').style.display = this.checked ? 'block' : 'none'; if(!this.checked) document.getElementById('fSenha').value='';">
+                                        <span class="toggle-slider"></span>
+                                    </div>
+                                    <div>
+                                        <span style="color: #b45309;">🔓 Definir / Alterar Palavra-passe</span><br>
+                                        <small style="color: #78350f;">Se o cadeado estiver desligado (ou se deixar a caixa vazia), a senha será o <b>NIF</b> do trabalhador.</small>
+                                    </div>
+                                </label>
+                                <div id="boxSenhaFunc" style="display: none; padding: 20px; background: white; border: 1.5px dashed #fcd34d; border-radius: 12px; margin-top: 15px;">
+                                    <label style="color: #b45309;">Escreva a Nova Senha</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="fSenha" placeholder="Digite a nova palavra-passe..." style="border-color: #fcd34d;">
+                                        <button type="button" class="toggle-pwd" onclick="togglePassword('fSenha', this); return false;">👁️</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label style="color: var(--primary-color); margin-bottom: 8px;">Habilitações Profissionais</label>
+                            <div class="checkbox-group" id="containerFuncoesFunc"></div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>🏠 Cidade de Residência</label>
+                                <input type="text" id="fCidade" placeholder="Ex: Porto, Vila Nova de Gaia..." autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="unit-box" style="margin-bottom: 20px; padding: 15px;">
+                            <h4 style="margin-bottom: 5px; color: var(--primary-color);">⏱️ Matriz de Disponibilidade</h4>
+                            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 15px;">Selecione os turnos em que o trabalhador tem disponibilidade.</p>
+                            
+                            <div id="matrizDisponibilidade" style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="background: white; border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px;">
+                                    <div style="font-weight: 700; color: #334155; margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 5px;">🌅 Manhã</div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="dom_manha" checked> Dom</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="seg_manha" checked> Seg</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="ter_manha" checked> Ter</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qua_manha" checked> Qua</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qui_manha" checked> Qui</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sex_manha" checked> Sex</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sab_manha" checked> Sáb</label>
+                                    </div>
+                                </div>
+                                <div style="background: white; border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px;">
+                                    <div style="font-weight: 700; color: #334155; margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 5px;">☀️ Tarde</div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="dom_tarde" checked> Dom</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="seg_tarde" checked> Seg</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="ter_tarde" checked> Ter</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qua_tarde" checked> Qua</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qui_tarde" checked> Qui</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sex_tarde" checked> Sex</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sab_tarde" checked> Sáb</label>
+                                    </div>
+                                </div>
+                                <div style="background: white; border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px;">
+                                    <div style="font-weight: 700; color: #334155; margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 5px;">🌙 Noite</div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="dom_noite" checked> Dom</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="seg_noite" checked> Seg</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="ter_noite" checked> Ter</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qua_noite" checked> Qua</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qui_noite" checked> Qui</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sex_noite" checked> Sex</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sab_noite" checked> Sáb</label>
+                                    </div>
+                                </div>
+                                <div style="background: white; border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px;">
+                                    <div style="font-weight: 700; color: #334155; margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px dashed var(--border-soft); padding-bottom: 5px;">🦉 Madrugada</div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="dom_madrugada" checked> Dom</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="seg_madrugada" checked> Seg</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="ter_madrugada" checked> Ter</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qua_madrugada" checked> Qua</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="qui_madrugada" checked> Qui</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sex_madrugada" checked> Sex</label>
+                                        <label style="margin:0; font-size: 0.85rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" value="sab_madrugada" checked> Sáb</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <button type="submit" class="btn-save" id="btnSalvarFunc" style="margin-top: 10px;">Guardar Ficha</button>
+                            <button type="button" class="btn-action" id="btnCancelarFunc" style="background:#64748b; display:none; margin-top: 10px;" onclick="cancelarEdicaoFunc()">Cancelar Edição</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="abaFuncImport" class="aba-func-content" style="display: none;">
+                <div class="card no-print" style="border-left: 4px solid var(--success-color); background: #f0fdf4;">
+                    <h2 style="color: var(--success-color); border-bottom-color: #dcfce7;">Importação Rápida de Equipa (Excel / CSV)</h2>
+                    <p style="font-size: 0.95rem; color: #166534; margin-bottom: 20px;">Use esta ferramenta para adicionar múltiplos trabalhadores de uma só vez usando uma folha de cálculo.</p>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <button type="button" class="btn-action" style="background: #475569; padding: 14px 20px;" onclick="descarregarModeloCSV()">📥 1. Descarregar Modelo</button>
+                        <input type="file" id="fileImportFunc" accept=".csv" style="display: none;" onchange="processarImportacaoCSV(event)">
+                        <button type="button" class="btn-action" style="background: var(--success-color); padding: 14px 20px;" onclick="document.getElementById('fileImportFunc').click()" id="btnUploadCsv">📤 2. Fazer Upload do Ficheiro Preenchido</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function mudarAbaFunc(aba) {
+                    document.querySelectorAll('.aba-func-content').forEach(el => el.style.display = 'none');
+                    const btns = ['Lista', 'Ficha', 'Import'];
+                    btns.forEach(b => {
+                        const btn = document.getElementById('btnAbaFunc' + b);
+                        if (btn) {
+                            btn.style.background = '#e2e8f0';
+                            btn.style.color = '#475569';
+                            btn.style.boxShadow = 'none';
+                        }
+                    });
+
+                    document.getElementById('abaFunc' + aba.charAt(0).toUpperCase() + aba.slice(1)).style.display = 'block';
+                    const btnAtivo = document.getElementById('btnAbaFunc' + aba.charAt(0).toUpperCase() + aba.slice(1));
+                    if (btnAtivo) {
+                        btnAtivo.style.background = 'var(--primary-color)';
+                        btnAtivo.style.color = 'white';
+                        btnAtivo.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                    }
+                }
+
+                function filtrarFuncionariosPorNome() {
+                    const input = document.getElementById('pesquisaFunc');
+                    const filter = input.value.toLowerCase();
+                    const trs = document.getElementById('tabelaFuncionarios').getElementsByTagName('tr');
+                    
+                    for (let i = 0; i < trs.length; i++) {
+                        if (trs[i].getElementsByTagName('td').length > 1) {
+                            const rowText = trs[i].textContent.toLowerCase();
+                            trs[i].style.display = rowText.includes(filter) ? '' : 'none';
+                        }
+                    }
+                }
+
+                document.addEventListener('click', function(e) {
+                    if (e.target && e.target.classList.contains('btn-edit') && e.target.closest('#tabelaFuncionarios')) {
+                        mudarAbaFunc('ficha');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                    if (e.target && e.target.id === 'btnCancelarFunc') {
+                        setTimeout(() => mudarAbaFunc('lista'), 50); 
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                });
+            </script>
+        </section>
+
+        <section id="empresas" class="page-content">
+            
+            <div class="card" style="border-left: 4px solid var(--primary-color);">
+                <h2 id="tituloGrupo">1. Gestão de Grupos / Clientes</h2>
+                <form id="formGrupo">
+                    <input type="hidden" id="gIdEdit">
+                    <div class="form-row">
+                        <div class="form-group"><label>Nome do Grupo / Sede</label><input type="text" id="gNomeG" required placeholder="Ex: Grupo Pestana"></div>
+                        <div class="form-group"><label>NIF Fiscal do Grupo</label><input type="text" id="gNif"></div>
+                    </div>
+                    <h3 style="font-size:0.95rem; margin-top:10px;">Contactos do Responsável Geral (Opcional)</h3>
+                    <div class="form-row">
+                        <div class="form-group"><label>Nome do Responsável</label><input type="text" id="gRespNome"></div>
+                        <div class="form-group"><label>Telefone</label><input type="tel" id="gRespTel"></div>
+                        <div class="form-group"><label>E-mail</label><input type="email" id="gRespEmail"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Observações / Notas</label><input type="text" id="gObs"></div>
+                    </div>
+                    <div class="form-row" style="margin-top: 10px;">
+                        <button type="submit" class="btn-save" id="btnSalvarGrupo" style="max-width: 250px;">Gravar Grupo</button>
+                        <button type="button" class="btn-action" id="btnCancelarGrupo" style="background:#64748b; display:none;" onclick="cancelarEdicaoGrupo()">Cancelar</button>
+                    </div>
+                </form>
+
+                
+                <div style="overflow-x: auto; margin-top: 25px;">
+                    <table style="margin-top:0;">
+                        <thead><tr><th>Nome do Grupo</th><th>NIF</th><th>Responsável / Contactos</th><th>Ações</th></tr></thead>
+                        <tbody id="tabelaGrupos"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--action-color);">
+                <h2 id="tituloUnidade">2. Gestão de Unidades / Locais de Trabalho</h2>
+                <form id="formUnidade">
+                    <input type="hidden" id="uIdEdit">
+                    
+                    <div class="form-row" style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1.5px dashed var(--action-color); margin-bottom: 15px;">
+                        <div class="form-group" style="margin: 0; width: 100%;">
+                            <label>Pertence a qual Grupo? (Obrigatório)</label>
+                            <select id="uGrupoSelect" required style="font-weight:bold; color:var(--primary-color);">
+                                <option value="">-- Escolha primeiro o Grupo --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group"><label>Nome da Unidade (Ex: Sede, Estaleiro B, Evento X)</label><input type="text" id="uNome" required></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Contacto do Cliente / Gestor Local</label><input type="text" id="uContato"></div>
+                        <div class="form-group"><label>Telefone Local</label><input type="tel" id="uTel"></div>
+                        <div class="form-group"><label>E-mail Local</label><input type="email" id="uEmail"></div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group"><label>Rua / Morada do Local</label><input type="text" id="uRua"></div>
+                        <div class="form-group" style="max-width: 150px;"><label>Cód. Postal</label><input type="text" id="uCodPostal" placeholder="Ex: 4000-123"></div>
+                        <div class="form-group"><label>Cidade</label><input type="text" id="uCidade"></div>
+                    </div>
+                    
+                    <div class="form-row" style="background: #f0fdf4; padding: 15px; border-radius: 12px; border: 1.5px dashed var(--success-color); margin-top: 5px;">
+                        <div class="form-group"><label>Latitude (GPS)</label><input type="number" step="any" id="uLat"></div>
+                        <div class="form-group"><label>Longitude (GPS)</label><input type="number" step="any" id="uLng"></div>
+                        <div style="width: 100%; margin-top: 5px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" class="btn-action" style="background: var(--info-color); flex: 1; min-width: 200px;" onclick="buscarGPSporMorada(this)">🔍 Buscar GPS por Morada</button>
+                            <button type="button" class="btn-action" style="background: #64748b; flex: 1; min-width: 200px;" onclick="capturarCoordenadasGPS(this)">📍 Meu GPS Atual</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" style="background: #fffbeb; padding: 15px; border-radius: 12px; border: 1.5px dashed #f59e0b; margin-top: 15px;">
+                        <div style="width: 100%;">
+                            <label class="toggle-wrapper" id="lblToggleValidacao" style="margin: 0; background: white; border-color: #fcd34d;">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="uExigeValidacao" onchange="toggleValidacao()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span style="color: #b45309;">🛡️ Exigir Validação do Cliente (Ponto B2B)</span><br>
+                                    <small style="color: #78350f;">Se ativo, o turno fica "A Aguardar Validação" para o Cliente aprovar.</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;"><label style="color: var(--primary-color); margin:0;">Funções Habitualmente Pedidas</label></div>
+                        <div class="checkbox-group containerFuncoesUnid"></div>
+                    </div>
+                    
+                    <div class="form-row" style="margin-top: 20px;">
+                        <button type="submit" class="btn-save" id="btnSalvarUnidade" style="max-width: 250px;">Gravar Unidade</button>
+                        <button type="button" class="btn-action" id="btnCancelarUnidade" style="background:#64748b; display:none;" onclick="cancelarEdicaoUnidade()">Cancelar</button>
+                    </div>
+                </form>
+
+                
+                <div style="overflow-x: auto; margin-top: 25px;">
+                    <table style="margin-top:0;">
+                        <thead><tr><th>Grupo / Cliente</th><th>Unidade / Local</th><th class="esconder-mobile">Cidade</th><th>Ações</th></tr></thead>
+                        <tbody id="tabelaUnidades"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECÇÃO: ESCALAS -->
+        <section id="escalas" class="page-content">
+            <div class="card">
+                <h2 id="tituloEscala">Criar / Editar Agendamento</h2>
+                <form id="formEscala">
+                    <input type="hidden" id="escIdEdit">
+                    
+                    <div class="form-row" id="linhaAgendamentoMultiplo" style="background: var(--bg-color); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1.5px solid var(--border-soft);">
+                        <div id="bannerMagico" style="display: none; width:100%; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed var(--border-soft);">
+                            <div style="color:var(--success-color); font-weight:800; font-size:1.1rem;" id="txtBannerMagico">🪄 A Atender Pedido</div>
+                            <button type="button" class="btn-action" style="background:var(--danger-color);" onclick="cancelarMagica()">❌ Cancelar Atendimento</button>
+                            <div style="width:100%; font-size:0.95rem; color:var(--text-muted);">Pode escolher 1 trabalhador e usar a opção múltipla abaixo para o escalar em todos os dias do pedido do cliente!</div>
+                        </div>
+
+                        <div style="width: 100%;" id="conteudoLinhaMagica">
+                            <label class="toggle-wrapper" id="lblToggleEscala" style="margin: 0; background: white;">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="escMultiplo" onchange="toggleMultiplo()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span>📅 Modo de Agendamento Múltiplo</span><br>
+                                    <small>Repetir este trabalhador para vários dias da semana</small>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="divConfigMultiplo" style="display: none; width: 100%; gap: 15px; flex-wrap: wrap; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-soft);">
+                            <div class="form-group" style="max-width:200px;"><label>Até ao dia</label><input type="date" id="escDataAte"></div>
+                            <div class="form-group" style="flex: 2;"><label>Repetir nestes dias da semana:</label>
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:5px; background:white; padding:10px; border-radius:8px; border:1px solid var(--border-soft);">
+                                    <label><input type="checkbox" class="dia-semana" value="1" checked> Seg</label><label><input type="checkbox" class="dia-semana" value="2" checked> Ter</label><label><input type="checkbox" class="dia-semana" value="3" checked> Qua</label><label><input type="checkbox" class="dia-semana" value="4" checked> Qui</label><label><input type="checkbox" class="dia-semana" value="5" checked> Sex</label><label><input type="checkbox" class="dia-semana" value="6"> Sáb</label><label><input type="checkbox" class="dia-semana" value="0"> Dom</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Local de Trabalho</label>
+                            <select id="escUnidade" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Trabalhador (Apenas Ativos)</label>
+                            <select id="escFunc" required>
+                                <option value="">-- Selecione o Trabalhador --</option>
+                                <option value="A_DEFINIR" style="font-weight: bold; color: #d97706;">⏳ A Definir (Turno em Aberto)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row"><div class="form-group"><label>Função</label><select id="escFuncao" required></select></div></div>
+                    <div class="form-row"><div class="form-group"><label id="lblDataInicio">Data do Turno</label><input type="date" id="escDataIn" required></div><div class="form-group"><label>Hora de Entrada Prevista</label><input type="time" id="escHoraIn" required></div><div class="form-group" style="display:none;"><label>Data Fim</label><input type="date" id="escDataOut"></div><div class="form-group"><label>Hora de Saída Prevista</label><input type="time" id="escHoraOut" required></div></div>
+                    
+                    <div class="form-row" style="background: var(--bg-color); padding: 15px; border-radius: 12px; align-items: center; margin-top: 10px; border: 1.5px solid var(--border-soft);">
+                        <div style="width: 100%; max-width: 300px;">
+                            <label class="toggle-wrapper" id="lblToggleEscPausa" style="margin: 0; background: white;">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="escPausa" onchange="togglePausaEsc()">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span>☕ Tem Pausa Programada?</span>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="form-group" id="divMinutosPausa" style="display: none; margin: 0; flex: 1;">
+                            <label>Tempo Previsto (min)</label>
+                            <input type="number" id="escMinutos" value="0">
+                        </div>
+                        <div id="divMinutosPausaReal" style="display: none; flex: 2; gap: 10px;">
+                            <div class="form-group" style="margin: 0; flex: 1;">
+                                <label>Início da Pausa</label>
+                                <input type="time" id="escHoraInicioPausa">
+                            </div>
+                            <div class="form-group" style="margin: 0; flex: 1;">
+                                <label>Fim da Pausa</label>
+                                <input type="time" id="escHoraFimPausa">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" id="linhaAcertoManual" style="display: none; background: #fef2f2; padding: 15px; border-radius: 12px; margin-top: 15px; border: 1.5px solid #fca5a5;">
+                        <div style="width: 100%; margin-bottom: 10px; color: var(--danger-color); font-weight: 800;">Acerto Manual e Estado do Turno</div>
+                        
+                        <div id="boxObsCliente" style="display: none; width: 100%; background: #fffbeb; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px dashed #f59e0b;">
+                            <strong style="color: #b45309;">📝 Observação do Cliente / Gestor Local:</strong>
+                            <p id="lblObsCliente" style="margin-top: 5px; font-size: 0.95rem; color: #78350f; margin-bottom: 0;"></p>
+                        </div>
+
+                        <div class="form-group" style="min-width: 100%;">
+                            <label>Estado Final do Turno</label>
+                            <select id="escStatus" style="font-weight: bold;">
+                                <option value="Pendente" style="color: var(--warning-color);">Pendente (Vaga Aberta)</option>
+                                <option value="Agendado">Agendado</option>
+                                <option value="A Aguardar Validação">A Aguardar Validação (Cliente)</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Falta">Falta</option>
+                                <option value="Cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Check-in Real</label><input type="time" id="escCheckinReal"></div><div class="form-group"><label>Check-out Real</label><input type="time" id="escCheckoutReal"></div>
+                    </div>
+
+                    <div class="form-row"><button type="submit" class="btn-save" id="btnSalvarEscala" style="margin-top: 20px;">Confirmar Agendamento</button><button type="button" class="btn-action" id="btnCancelarEscala" style="background:#64748b; display:none; margin-top: 20px;" onclick="cancelarEdicaoEscala()">Cancelar Edição</button></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid var(--border-soft); padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                    <h2 id="tituloListaEscalas" style="margin: 0; border: none; padding: 0;">Turnos Ativos</h2>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="btnAbaEscPendentes" class="btn-action" style="background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onclick="mudarAbaEscalas('pendentes')">📅 Futuros / Pendentes</button>
+                        <button id="btnAbaEscValidacao" class="btn-action" style="background: #e2e8f0; color: #475569; padding: 8px 16px; border-radius: 8px; font-weight: bold; box-shadow: none;" onclick="mudarAbaEscalas('validacao')">🛡️ Ação Necessária</button>
+                        <button id="btnAbaEscHistorico" class="btn-action" style="background: #e2e8f0; color: #475569; padding: 8px 16px; border-radius: 8px; font-weight: bold; box-shadow: none;" onclick="mudarAbaEscalas('historico')">✅ Histórico</button>
+                    </div>
+                </div>
+
+                <!-- 📍 NOVOS FILTROS INTELIGENTES DA TABELA DE ESCALAS -->
+                <div class="no-print" id="barraFiltrosEscalas" style="margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid var(--border-soft); display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; padding-left: 4px;">Filtro de Empresa / Grupo</label>
+                        <select id="filtroEscCliente" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-soft); font-weight: 600; font-size: 0.9rem; outline: none; cursor: pointer;" onchange="aplicarFiltrosEscalas()">
+                            <option value="ALL">🏢 Todas as Empresas</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; padding-left: 4px;">Filtro de Local / Unidade</label>
+                        <select id="filtroEscUnidade" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-soft); font-weight: 600; font-size: 0.9rem; outline: none; cursor: pointer;" onchange="aplicarFiltrosEscalas()">
+                            <option value="ALL">📍 Todos os Locais</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; padding-left: 4px;">Filtro de Trabalhador</label>
+                        <select id="filtroEscFunc" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-soft); font-weight: 600; font-size: 0.9rem; outline: none; cursor: pointer;" onchange="aplicarFiltrosEscalas()">
+                            <option value="ALL">👷 Todos os Trabalhadores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table><thead><tr><th>Data</th><th>Funcionário / Local</th><th>Horário</th><th>Estado</th><th>Ações</th></tr></thead><tbody id="tabelaEscalas"></tbody></table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECÇÃO: ACESSOS -->
+        <section id="acessos" class="page-content">
+            
+            <div class="card" style="border-left: 4px solid var(--info-color);">
+                <h2>Gestão de Funções Operacionais 🛠️</h2>
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 15px;">Defina a base de dados oficial de funções (cargos). Apenas gestores podem criar novas funções para manter os dados padronizados em todo o sistema.</p>
+                <div class="form-row" style="align-items: flex-end;">
+                    <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                        <label>Nova Função (Ex: Rececionista, Segurança, Operador...)</label>
+                        <input type="text" id="txtNovaFuncaoMaster" placeholder="Digite o nome da função..." autocomplete="off">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <button type="button" class="btn-action" style="width: 100%; background: var(--info-color);" onclick="addFuncao('txtNovaFuncaoMaster')">+ Adicionar à Base de Dados</button>
+                    </div>
+                </div>
+                <div id="containerFuncoesMaster" style="margin-top: 25px; padding-top: 20px; border-top: 1px dashed var(--border-soft);">
+                    <!-- Tags geradas pelo JavaScript -->
+                </div>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--success-color);">
+                <h2>Segurança da Minha Conta Master</h2>
+                <form id="formSenhaAgencia">
+                    <!-- 📍 CADEADO DE SEGURANÇA: MASTER AGÊNCIA -->
+                    <div class="form-row">
+                        <div class="form-group" style="width: 100%;">
+                            <label class="toggle-wrapper" id="lblToggleSenhaAg" style="margin: 0; background: #f0fdf4; border-color: #86efac;">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="toggleEditaSenhaAg" onchange="document.getElementById('boxSenhaAg').style.display = this.checked ? 'block' : 'none'; document.getElementById('novaSenhaAg').required = this.checked; if(!this.checked) document.getElementById('novaSenhaAg').value='';">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span style="color: #166534;">🔓 Atualizar a minha Palavra-passe Master</span><br>
+                                    <small style="color: #14532d;">Ative este cadeado se desejar alterar a sua senha de entrada atual.</small>
+                                </div>
+                            </label>
+                            <div id="boxSenhaAg" style="display: none; padding: 20px; background: white; border: 1.5px dashed #86efac; border-radius: 12px; margin-top: 15px;">
+                                <label style="color: #166534;">Nova Palavra-passe Pessoal</label>
+                                <div class="password-wrapper">
+                                    <input type="password" id="novaSenhaAg" placeholder="Mín. 8 caracteres, 1 Maiúscula, 1 Número" style="border-color: #86efac;">
+                                    <button type="button" class="toggle-pwd" onclick="togglePassword('novaSenhaAg', this); return false;">👁️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save" style="margin-top: 15px; max-width: 250px;">Gravar Nova Senha</button>
+                </form>
+            </div>
+
+            <!-- INÍCIO DO NOVO BLOCO GPS (CONFIGURAÇÕES GLOBAIS) -->
+            <div class="card" id="cardConfiguracoesAgencia" style="border-left: 4px solid var(--warning-color);">
+                <h2>Configurações Globais da Agência ⚙️</h2>
+                <div style="margin-top: 10px; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc;">
+                    <h4 style="margin-top:0; color:#0f172a; margin-bottom:10px;">🛰️ Controlo Legal de GPS</h4>
+                    <p style="font-size:0.85rem; color:#475569; margin-bottom:10px;">Defina o rigor da geolocalização na App dos seus trabalhadores.</p>
+                    <select id="gpsAgenciaSelect" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #94a3b8; font-weight:bold;">
+                        <option value="1">🔴 Nível 1: Rigoroso (Bloqueia ponto fora do raio)</option>
+                        <option value="2">🟡 Nível 2: Flexível (Avisa, mas permite forçar manual)</option>
+                        <option value="3">🟢 Nível 3: Desligado (Ponto livre, sem consentimento)</option>
+                    </select>
+                    <button class="btn-action" style="margin-top:10px; background: var(--primary-color); font-weight: bold;" onclick="gravarNivelGPS()">💾 Gravar Definição de GPS</button>
+                </div>
+            </div>
+            <!-- FIM DO NOVO BLOCO GPS -->
+            
+            <div class="card" style="border-left: 4px solid var(--action-color);">
+                <h2>Adicionar Gestor da Unidade 🏢</h2>
+                <form id="formGestor" autocomplete="off">
+                    <input type="hidden" id="gIdEditGestor">
+                    <div class="form-row">
+                        <div class="form-group"><label>Nome do Gestor</label><input type="text" id="gNome" required autocomplete="none"></div>
+                        <div class="form-group"><label>E-mail</label><input type="email" id="gEmail" required autocomplete="new-email"></div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group"><label>Unidade Alocada (Limitar Acesso)</label><select id="gUnidade"><option value="">-- Acesso Total (Master da Agência) --</option></select></div>
+                    </div>
+
+                    <!-- 📍 CADEADO DE SEGURANÇA: SENHA DO GESTOR LOCAL REFINADO -->
+                    <div class="form-row">
+                        <div class="form-group" style="width: 100%;">
+                            <label class="toggle-wrapper" id="lblToggleSenhaGestor" style="margin: 0; background: #f0f9ff; border-color: #bae6fd;">
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="toggleEditaSenhaGestor" onchange="document.getElementById('boxSenhaGestor').style.display = this.checked ? 'block' : 'none'; if(!this.checked) document.getElementById('gSenha').value='';">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                                <div>
+                                    <span style="color: #0369a1;">🔓 Alterar Senha de Acesso</span><br>
+                                    <small style="color: #075985;">Ligue para definir uma nova palavra-passe. Se desligado (ou vazio), a senha será <b>Senha123!</b></small>
+                                </div>
+                            </label>
+                            <div id="boxSenhaGestor" style="display: none; padding: 20px; background: white; border: 1.5px dashed #bae6fd; border-radius: 12px; margin-top: 15px;">
+                                <label style="color: #0369a1;">Escreva a Nova Senha</label>
+                                <div class="password-wrapper">
+                                    <input type="password" id="gSenha" placeholder="Digite a nova palavra-passe..." autocomplete="new-password" style="border-color: #bae6fd;">
+                                    <button type="button" class="toggle-pwd" onclick="togglePassword('gSenha', this); return false;">👁️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" style="margin-top: 20px;">
+                        <button type="submit" class="btn-save" id="btnSalvarGestor" style="max-width: 250px;">Criar / Editar Acesso</button>
+                        <button type="button" class="btn-action" id="btnCancelarGestor" style="background:#64748b; display:none;" onclick="cancelarEdicaoGestor()">Cancelar Edição</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card"><h2>Acessos Ativos</h2><div style="overflow-x: auto;"><table><thead><tr><th>Nome e Nível de Acesso</th><th>E-mail</th><th>Estado</th><th>Ações</th></tr></thead><tbody id="tabelaGestores"></tbody></table></div></div>
+        </section>
+
+        <!-- SECÇÃO: RELATÓRIOS -->
+        <section id="relatorios" class="page-content">
+            <div class="card no-print" id="cardAssinaturas" style="border-left: 4px solid var(--info-color); background: #f8fafc;"><h2 style="color: var(--info-color); border-bottom-color: #e0f2fe;">🔐 Controlo de Assinaturas Digitais</h2><form id="formSolicitarAssinatura" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; background: #fff; padding: 15px; border-radius: 12px; border: 1px solid var(--border-soft);"><div class="form-group" style="margin:0; flex:2;"><label>Trabalhador</label><select id="assFuncionario" required></select></div><div class="form-group" style="margin:0; flex:1;"><label>Mês de Fecho</label><select id="assMes" required><option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option><option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option><option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></div><div class="form-group" style="margin:0; flex:1;"><label>Ano</label><input type="number" id="assAno" value="2026" required></div><button type="submit" class="btn-action" style="background: var(--info-color); margin:0;">Enviar Pedido à App</button></form><div style="overflow-x: auto; background: #fff; border-radius: 12px; border: 1px solid var(--border-soft);"><table style="margin-top: 0;"><thead><tr><th>Trabalhador</th><th>Mês Fechado</th><th>Estado</th><th>Carimbo Digital</th><th>Ações</th></tr></thead><tbody id="tabelaAssinaturas"></tbody></table></div></div>
+            
+            <div class="card" id="formFiltroRelatorio">
+                <h2>Filtros Avançados Relacionais</h2>
+                <div class="form-row">
+                    <div class="form-group"><label>Empresa / Cliente</label><select id="repEmpresa"><option value="">-- Todas as Empresas --</option></select></div>
+                    <div class="form-group"><label>Funcionário</label><select id="repFuncionario"><option value="">-- Todos os Funcionários --</option></select></div>
+                    <div class="form-group"><label>Estado do Turno</label><select id="repStatus"><option value="">-- Todos --</option><option value="Agendado">Agendado</option><option value="Concluído">Concluído</option><option value="Falta">Falta</option><option value="Cancelado">Cancelado</option><option value="Agendamento Não efetivado">Agendamento Não efetivado</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Data Inicial (De)</label><input type="date" id="repDataInicio"></div>
+                    <div class="form-group"><label>Data Final (Até)</label><input type="date" id="repDataFim"></div>
+                </div>
+                <div class="form-row" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-action" style="background: var(--primary-color); flex: 1;" onclick="processarFiltroRelatorio()">🔍 Lista de Turnos</button>
+                    <button class="btn-action" style="background: #8b5cf6; flex: 1;" onclick="gerarGrelhaMensal()">📅 Folha Mensal (31 Dias)</button>
+                    <button class="btn-action" style="background: var(--success-color); flex: 1;" onclick="exportarExcelRelatorio()">📊 Exportar Excel</button>
+                    <button class="btn-action" style="background: var(--info-color); flex: 1;" onclick="window.print()">🖨️ Imprimir PDF</button>
+                </div>
+            </div>
+            
+            <div class="card" id="cardGrelhaMensal" style="display: none; border-left: 4px solid #8b5cf6;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h2 id="tituloGrelhaMensal" style="margin: 0; border: none; padding: 0; color: #8b5cf6;">Folha Mensal de Ponto</h2>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;" class="no-print">
+                        <button class="btn-action" style="background: var(--success-color);" onclick="exportarGrelhaMensalExcel()">📊 Exportar Excel (Contabilidade)</button>
+                    </div>
+                </div>
+
+
+
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 800px;" id="tabelaGrelhaMensal">
+                        <!-- Injetado pelo JS -->
+                    </table>
+                </div>
+                <div id="blocoAssinaturaGrelha" style="display: none; margin-top: 40px; border-top: 2px solid var(--primary-color); padding-top: 20px; page-break-inside: avoid;"></div>
+            </div>
+
+            <div class="card" id="cardResultadosRelatorio">
+
+                <h2 class="no-print">Resultados da Extração (Lista)</h2>
+                <div style="overflow-x: auto;"><table id="tabelaResultadosRelatorio"><thead><tr><th>Empresa / Localização</th><th>Funcionário / Função</th><th>Data</th><th>Estado</th><th>Entrada Real</th><th>Saída Real</th><th>Pausa</th><th style="text-align: right;">Horas Efetivas</th></tr></thead><tbody id="corpoRelatorio"><tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Configure os filtros acima e clique em "Lista de Turnos" ou "Folha Mensal".</td></tr></tbody><tfoot><tr style="background: var(--bg-color); font-weight: 800; border-top: 2px solid var(--primary-color);"><td colspan="7" style="text-align: right; color: var(--primary-color);">Somatório de Horas Efetivas:</td><td id="totalHorasRelatorio" style="text-align: right; font-size: 1.2rem; color: var(--primary-color);">00:00 h</td></tr></tfoot></table></div>
+                <div id="blocoAssinatura" style="display: none; margin-top: 40px; border-top: 2px solid var(--primary-color); padding-top: 20px; page-break-inside: avoid;"></div>
+            </div>
+        </section>
+
+        <!-- 📍 NOVO RODAPÉ DINÂMICO E PROFISSIONAL -->
+        <footer class="footer-master no-print" style="margin-top: auto; padding: 20px 30px; border-top: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: rgba(255, 255, 255, 0.5);">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                <strong>© <span id="anoRodape"></span> Agenda360</strong> • v1.0 Enterprise<br>
+                <a href="#" onclick="document.getElementById('modalRGPD').style.display='flex'; return false;" style="color: var(--action-color); text-decoration: none;">Política de Privacidade e RGPD</a>
+            </div>
+            <div>
+                <!-- O GATILHO ESTÁ AQUI -->
+                <a id="btnFaleConnosco" href="#" onclick="contactarSuporte(); return false;" class="btn-action" style="background: var(--sidebar-bg); color: white; text-decoration: none; display: inline-block; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem;">
+                    📩 Fale com o Agenda360
+                </a>
+            </div>
+        </footer>
+
+    </div> <!-- Fim da main-content -->
+
+    <!-- MODAL: DETALHES -->
+    <div id="modalVer" class="modal-overlay-content no-print">
+        <div class="modal-box">
+            <span class="close-btn" onclick="document.getElementById('modalVer').style.display='none'">&times;</span>
+            <h2 id="modalVerTitulo" style="color: var(--primary-color); border-bottom: 2px dashed var(--border-soft); padding-bottom: 10px; margin-bottom: 20px;">Detalhes</h2>
+            <div id="modalVerConteudo"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIGURAR IMPRESSÃO MAPA SEMANAL -->
+    <div id="modalMapaSemanal" class="modal-overlay-content no-print">
+        <div class="modal-box" style="max-width: 450px; padding: 40px;">
+            <span class="close-btn" onclick="document.getElementById('modalMapaSemanal').style.display='none'">&times;</span>
+            <h2 style="color: var(--primary-color); border-bottom: 2px dashed var(--border-soft); padding-bottom: 15px; margin-bottom: 25px;">🖨️ Imprimir Mapa Semanal</h2>
+            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 25px;">Gere a folha de horários da parede perfeitamente formatada para a semana que escolher.</p>
+            <div class="form-group">
+                <label>Unidade / Local (Onde será afixado?)</label>
+                <select id="mapaUnidadeSelect" required></select>
+            </div>
+            <div class="form-group" style="margin-bottom: 30px;">
+                <label>A semana começa em que dia? (Segunda-feira)</label>
+                <input type="date" id="mapaDataInicio" required>
+            </div>
+            <button class="btn-save" style="background: var(--primary-color);" onclick="gerarEImprimirMapa()">Criar e Imprimir Mapa</button>
+        </div>
+    </div>
+
+    <!-- 📍 NOVO MODAL RGPD (LEVE E SEM COOKIES) -->
+    <div id="modalRGPD" class="modal-overlay-content no-print">
+        <div class="modal-box" style="max-width: 500px; padding: 40px;">
+            <span class="close-btn" onclick="document.getElementById('modalRGPD').style.display='none'">&times;</span>
+            <h2 style="color: var(--primary-color); border-bottom: 2px dashed var(--border-soft); padding-bottom: 15px; margin-bottom: 20px;">🛡️ Política de Privacidade e RGPD</h2>
+            <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; text-align: justify; margin-bottom: 15px;">
+                A <strong>Agenda360</strong> garante o estrito cumprimento do Regulamento Geral sobre a Proteção de Dados (RGPD).
+            </p>
+            <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; text-align: justify; margin-bottom: 15px;">
+                Os dados de assiduidade, tempos de trabalho e geolocalização pontual (sem rastreamento contínuo) são recolhidos e processados exclusivamente para o cumprimento de obrigações laborais, legais e de faturação.
+            </p>
+            <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; text-align: justify; margin-bottom: 25px;">
+                <strong>Não utilizamos cookies de rastreamento ou publicidade.</strong> A plataforma recorre apenas a armazenamento local estritamente necessário para manter a sua sessão ativa e segura.
+            </p>
+            <button class="btn-save" style="background: var(--primary-color);" onclick="document.getElementById('modalRGPD').style.display='none'">Compreendi</button>
+        </div>
+    </div>
+
+    <!-- CONTAINER INVISÍVEL (SÓ APARECE NO PAPEL QUANDO SE IMPRIME O MAPA SEMANAL) -->
+    <div id="printMapaParede" style="display: none; padding: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--primary-color); padding-bottom: 15px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="/logo_agenda_360.jpeg" alt="Logo Agenda360" style="max-height: 70px;" onerror="this.style.display='none'">
+                <div>
+                    <h1 style="font-size: 18pt; margin: 0; color: #0f172a; text-transform: uppercase;">Mapa Semanal de Escalas</h1>
+                    <p style="font-size: 12pt; margin: 5px 0 0 0; color: #475569;"><strong id="mapaPrintAgencia">Agência</strong></p>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <h2 style="font-size: 14pt; margin: 0; color: var(--primary-color);" id="mapaPrintUnidade">Local de Trabalho</h2>
+                <p style="font-size: 11pt; margin: 5px 0 0 0; color: #475569;" id="mapaPrintDatas">Semana</p>
+            </div>
+        </div>
+        <table id="mapaPrintTabela" style="width: 100%; border-collapse: collapse;">
+            <!-- Preenchido automaticamente pelo JavaScript -->
+        </table>
+    </div>
+
+    <!-- 📍 NOVO MODAL: FOLHA DE PONTO ASSINADA (Evita Redirecionamento e quebra o Loop) -->
+    <div id="modalFolhaPontoGestor" class="modal-overlay-content no-print" style="display: none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.9); z-index:10000; flex-direction:column; justify-content:center; align-items:center; padding:10px; box-sizing:border-box;">
+        <div class="modal-content-wrapper" style="background:white; border-radius:16px; width:100%; max-width:800px; max-height:95vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+            <!-- Header -->
+            <div class="no-print" style="background:var(--primary-color); color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0; font-size:1.2rem;">Folha de Ponto Mensal Oficial</h2>
+                <div>
+                    <button onclick="window.print()" style="background:transparent; border:none; color:white; font-size:1.2rem; cursor:pointer; margin-right:15px;" title="Imprimir Folha">🖨️</button>
+                    <button onclick="document.getElementById('modalFolhaPontoGestor').style.display='none'" style="background:transparent; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+                </div>
+            </div>
+            
+            <!-- Body Principal (A ser preenchido pelo JS) -->
+            <div style="padding:20px; overflow-y:auto; flex:1; background:#ffffff;" id="areaPrintFolhaGestor">
+                <!-- Conteúdo injetado pelo JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- WIDGET TO DO 360 -->
+    <div id="todo-widget-container" class="no-print">
+        <div id="todo-panel">
+            <h3 style="color: var(--primary-color); border-bottom: 2px dashed var(--border-soft); padding-bottom: 10px; margin-top: 0; margin-bottom: 15px;">📋 Assistente To Do</h3>
+            
+            <div id="todo-lista-tarefas"></div>
+            
+            <div class="todo-panel-footer-actions">
+                <button class="todo-btn-toggle-form" onclick="toggleFormularioTodo()">+ Criar Nova Tarefa</button>
+                <button class="todo-btn-toggle-form" onclick="abrirPlannerTodo()" style="background:#e0f2fe; color:#0369a1;">📅 Abrir Planner Completo</button>
+            </div>
+
+            <!-- Formulário Nova Tarefa -->
+            <div id="todo-form-nova-tarefa">
+                <h4 style="margin-top:0; color:#334155; margin-bottom:10px;">Nova Tarefa</h4>
+                <input type="text" id="todo-input-nome" class="todo-input-rapido" placeholder="O que precisa ser feito?">
+                <div style="display:flex; gap:10px;">
+                    <input type="date" id="todo-input-data" class="todo-input-rapido" style="flex:1;">
+                    <input type="time" id="todo-input-hora" class="todo-input-rapido" style="flex:1;">
+                </div>
+                <div class="todo-acoes-formulario">
+                    <button class="todo-btn-cancelar" onclick="cancelarTarefaTodo()">Cancelar</button>
+                    <button class="todo-btn-guardar" onclick="adicionarTarefaTodo()">Gravar</button>
+                </div>
+            </div>
+
+            <!-- Formulário Editar Tarefa -->
+            <div id="todo-form-editar-tarefa">
+                <h4 style="margin-top:0; color:#b45309; margin-bottom:10px;">Editar Tarefa</h4>
+                <input type="hidden" id="todo-edit-id">
+                <input type="text" id="todo-edit-nome" class="todo-input-rapido">
+                <div style="display:flex; gap:10px;">
+                    <input type="date" id="todo-edit-data" class="todo-input-rapido" style="flex:1;">
+                    <input type="time" id="todo-edit-hora" class="todo-input-rapido" style="flex:1;">
+                </div>
+                <div class="todo-acoes-formulario">
+                    <button class="todo-btn-cancelar" onclick="cancelarEdicaoTodo()">Cancelar</button>
+                    <button class="todo-btn-guardar" onclick="guardarEdicaoTodo()">Atualizar</button>
+                </div>
+            </div>
+
+            <!-- Formulário Duplicar Tarefa -->
+            <div id="todo-form-duplicar-tarefa">
+                <h4 style="margin-top:0; color:#0369a1; margin-bottom:10px;">Duplicar Tarefa</h4>
+                <input type="text" id="todo-dup-nome" class="todo-input-rapido">
+                <div style="display:flex; gap:10px;">
+                    <input type="date" id="todo-dup-data" class="todo-input-rapido" style="flex:1;">
+                    <input type="time" id="todo-dup-hora" class="todo-input-rapido" style="flex:1;">
+                </div>
+                <div class="todo-acoes-formulario">
+                    <button class="todo-btn-cancelar" onclick="cancelarDuplicacaoTodo()">Cancelar</button>
+                    <button class="todo-btn-guardar" onclick="guardarDuplicacaoTodo()">Duplicar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="todo-avatar-wrapper">
+            <div id="todo-drag-handle">≡ Mover</div>
+            <div id="todo-avatar-btn" onclick="togglePainelTodo()">
+                <img src="to_do_logo.jpg" alt="To Do" onerror="this.src='/logo_fav.png'">
+            </div>
+        </div>
+    </div>
+
+    <script src="gestao-core.js"></script>
+    <script src="gestao-rh.js"></script>
+    <script src="gestao-escalas.js"></script>
+    <script src="gestao-relatorios.js"></script>
+    <script src="gestao-todo.js"></script>
+    
+    <script>
+        // Preenche o ano automaticamente no rodapé
+        document.getElementById('anoRodape').innerText = new Date().getFullYear();
+
+        // 📍 BÚSSOLA TEMPORAL: Sincronizador Global de Datas
+        document.addEventListener('DOMContentLoaded', () => {
+            const hoje = new Date();
+            const anoAtual = hoje.getFullYear();
+            const mesAtual = hoje.getMonth(); // 0 a 11
+            const diaAtual = String(hoje.getDate()).padStart(2, '0');
+            const mesReal = String(mesAtual + 1).padStart(2, '0');
+            const dataHojeISO = `${anoAtual}-${mesReal}-${diaAtual}`;
+
+            // 1. Calendário Operacional
+            if(document.getElementById('calMes')) document.getElementById('calMes').value = mesAtual;
+            if(document.getElementById('calAno')) document.getElementById('calAno').value = anoAtual;
+
+            // 2. Criação Rápida de Turnos e Pedidos (Definir Hoje como padrão apenas se estiver vazio)
+            if(document.getElementById('escDataIn') && !document.getElementById('escDataIn').value) document.getElementById('escDataIn').value = dataHojeISO;
+            if(document.getElementById('solDataIn') && !document.getElementById('solDataIn').value) document.getElementById('solDataIn').value = dataHojeISO;
+            if(document.getElementById('repDataInicio') && !document.getElementById('repDataInicio').value) document.getElementById('repDataInicio').value = dataHojeISO;
+            if(document.getElementById('repDataFim') && !document.getElementById('repDataFim').value) document.getElementById('repDataFim').value = dataHojeISO;
+
+            // 3. Relatórios e Fecho (Assinaturas usam 1 a 12)
+            if(document.getElementById('assMes')) document.getElementById('assMes').value = mesAtual + 1; 
+            if(document.getElementById('assAno')) document.getElementById('assAno').value = anoAtual;
+
+            // 4. Mapa Semanal - Calcular a Segunda-feira da semana atual
+            if(document.getElementById('mapaDataInicio')) {
+                let diaSemana = hoje.getDay(); // Dom = 0, Seg = 1...
+                if(diaSemana === 0) diaSemana = 7; // Ajustar Domingo para ser o 7º dia
+                const dataSegunda = new Date(hoje);
+                dataSegunda.setDate(hoje.getDate() - diaSemana + 1);
+                
+                const segAno = dataSegunda.getFullYear();
+                const segMes = String(dataSegunda.getMonth() + 1).padStart(2, '0');
+                const segDia = String(dataSegunda.getDate()).padStart(2, '0');
+                document.getElementById('mapaDataInicio').value = `${segAno}-${segMes}-${segDia}`;
+            }
+        });
+    </script>
+
+    <!-- 📍 SCRIPT DE SUPORTE DIRETO (AGENDA360) -->
+    <script>
+    async function contactarSuporte() {
+        try {
+            // Tenta ir buscar o token (funciona de forma dinâmica para Agência ou Trabalhador)
+            const token = sessionStorage.getItem('agenda360_token') || sessionStorage.getItem('agenda360_master_token');
+            
+            const btn = document.getElementById('btnFaleConnosco');
+            const txtOriginal = btn.innerHTML;
+            btn.innerHTML = "A abrir e-mail...";
+            
+            const res = await fetch('/api/me', { 
+                headers: { 'Authorization': 'Bearer ' + token } 
+            });
+            
+            if (res.ok) {
+                const dados = await res.json();
+                // Vai buscar o e-mail que o SaaS Owner configurou no painel Master
+                const emailSuporte = dados.email_suporte || 'suporte@agenda360.com'; 
+                
+                // Abre o programa de correio do cliente com o destinatário e assunto pré-preenchidos
+                window.location.href = `mailto:${emailSuporte}?subject=Suporte%20Agenda360%20-%20Pedido%20de%20Ajuda`;
+            } else {
+                // Em caso de erro de rede, usa um fallback seguro
+                window.location.href = "mailto:suporte@agenda360.com?subject=Suporte%20Agenda360";
+            }
+            
+            setTimeout(() => { btn.innerHTML = txtOriginal; }, 2000);
+            
+        } catch (e) {
+            window.location.href = "mailto:suporte@agenda360.com?subject=Suporte%20Agenda360";
+        }
+    }
+    </script>
+
+    <div id="overlayEdicaoSegura" onclick="removerDestaqueFormulario()"></div>
+</body>
+</html>

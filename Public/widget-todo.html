@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Widget - To Do 360</title>
+    <style>
+        body { background-color: transparent; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; overflow: hidden; }
+        
+        /* Widget visível por defeito agora que não há login */
+        #todo-widget-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999; }
+        
+        #avatar-wrapper { display: flex; flex-direction: column; align-items: center; }
+        #drag-handle { background: #6C63FF; color: white; font-size: 11px; padding: 4px 12px; border-radius: 12px; cursor: grab; margin-bottom: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); user-select: none; font-weight: bold; }
+        #drag-handle:active { cursor: grabbing; background: #574bfa; }
+
+        #todo-avatar-btn { width: 85px; height: 85px; border-radius: 50%; background-color: white; border: 3px solid #6C63FF; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; padding: 2px; overflow: hidden; }
+        #todo-avatar-btn:hover { transform: scale(1.05); }
+        #todo-avatar-btn img { width: 100%; height: 100%; border-radius: 50%; object-fit: contain; pointer-events: none; }
+
+        #todo-panel { display: none; position: absolute; width: 90vw; max-width: 340px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 20px; border: 1px solid #f0f0f0; }
+        
+        #form-nova-tarefa, #form-editar-tarefa, #form-duplicar-tarefa { display: none; background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e9ecef; }
+        .input-rapido { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+        .acoes-formulario { display: flex; gap: 10px; }
+        .btn-cancelar, .btn-guardar { flex: 1; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-cancelar { background: #f1f3f5; color: #555; }
+        .btn-guardar { background: #6C63FF; color: white; }
+        .btn-toggle-form { background: none; border: none; color: #6C63FF; font-weight: bold; cursor: pointer; font-size: 0.85em; padding: 0; }
+        
+        #lista-tarefas { max-height: 200px; overflow-y: auto; padding-right: 5px; margin-bottom: 10px; }
+        #lista-tarefas::-webkit-scrollbar { width: 6px; }
+        #lista-tarefas::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 4px; }
+
+        .task-item { background: #FFFBEA; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #FFD166; transition: all 0.3s ease; }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .task-name { font-weight: 600; color: #333; font-size: 0.95em; }
+        .task-time { font-weight: bold; color: #FF6B6B; background: #FFF0F0; padding: 4px 8px; border-radius: 8px; font-size: 0.8em; }
+        
+        .task-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+        .btn-action { border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 0.85em; font-weight: bold; }
+        
+        .btn-edit { background: #F4F5F7; color: #42526E; }
+        .btn-dup { background: #F4F0FF; color: #6C63FF; } 
+        .btn-done { background: #E3FCEF; color: #006644; }
+        .btn-wait { background: #EBF0FF; color: #0052CC; }
+        
+        .status-done { border-left-color: #36B37E; background: #E3FCEF; opacity: 0.6; }
+        .status-lost { border-left-color: #FF5630; background: #FFEBE6; opacity: 0.6; }
+        .hidden-actions { display: none !important; }
+        .panel-footer-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; border-top: 1px solid #f0f0f0; padding-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div id="todo-widget-container">
+        <div id="todo-panel">
+            <h3 style="margin-top: 0; color: #333; display: flex; justify-content: space-between; align-items: center;">
+                <span>To Do Assist</span>
+                <button class="btn-toggle-form" onclick="toggleFormulario()">+ Nova Tarefa</button>
+            </h3>
+            
+            <div id="form-nova-tarefa">
+                <input type="text" id="input-nome" class="input-rapido" placeholder="Ex: Falar com a Eng. Carla">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="date" id="input-data" class="input-rapido" style="margin-bottom: 0;">
+                    <input type="time" id="input-hora" class="input-rapido" style="margin-bottom: 0;">
+                </div>
+                <div class="acoes-formulario">
+                    <button class="btn-cancelar" onclick="cancelarTarefa()">Cancelar</button>
+                    <button class="btn-guardar" onclick="adicionarTarefa()">Guardar</button>
+                </div>
+            </div>
+
+            <div id="form-editar-tarefa">
+                <h4 style="margin-top: 0; margin-bottom: 10px; color: #333; font-size: 14px;">✏️ Editar Tarefa</h4>
+                <input type="hidden" id="edit-id">
+                <input type="text" id="edit-nome" class="input-rapido" placeholder="Nome da tarefa">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="date" id="edit-data" class="input-rapido" style="margin-bottom: 0;">
+                    <input type="time" id="edit-hora" class="input-rapido" style="margin-bottom: 0;">
+                </div>
+                <div class="acoes-formulario">
+                    <button class="btn-cancelar" onclick="cancelarEdicao()">Cancelar</button>
+                    <button class="btn-guardar" onclick="guardarEdicao()">Salvar</button>
+                </div>
+            </div>
+
+            <div id="form-duplicar-tarefa">
+                <h4 style="margin-top: 0; margin-bottom: 10px; color: #333; font-size: 14px;">📋 Duplicar Tarefa</h4>
+                <input type="text" id="dup-nome" class="input-rapido" placeholder="Nome da tarefa">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="date" id="dup-data" class="input-rapido" style="margin-bottom: 0;">
+                    <input type="time" id="dup-hora" class="input-rapido" style="margin-bottom: 0;">
+                </div>
+                <div class="acoes-formulario">
+                    <button class="btn-cancelar" onclick="cancelarDuplicacao()">Cancelar</button>
+                    <button class="btn-guardar" onclick="guardarDuplicacao()">Duplicar</button>
+                </div>
+            </div>
+
+            <div id="lista-tarefas">
+                <p style="text-align:center; color:#999; font-size:0.9em;">A carregar o seu dia...</p>
+            </div>
+
+            <div class="panel-footer-actions">
+                <button onclick="abrirPlanner()" style="width: 100%; padding: 10px; background: #f4f7f6; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-weight: bold; color: #555;">
+                    📅 Abrir Planner Completo
+                </button>
+                <button onclick="voltarAoPainel()" style="width: 100%; padding: 10px; background: #fff; border: 1px solid #64748b; border-radius: 8px; cursor: pointer; font-weight: bold; color: #475569;">
+                    ⬅ Voltar à Gestão (Agenda)
+                </button>
+            </div>
+        </div>
+
+        <div id="avatar-wrapper">
+            <div id="drag-handle">✋ Mover</div>
+            <button id="todo-avatar-btn" onclick="togglePainel()">
+                <img src="to_do_logo.jpg" alt="Logo To Do" onerror="this.src='https://via.placeholder.com/85/6C63FF/FFFFFF?text=360'">
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // VERIFICAÇÃO DE SEGURANÇA SINGLE SIGN-ON (SSO)
+        const authToken = localStorage.getItem('agenda360_token');
+        if (!authToken) { 
+            alert("Acesso Negado! Deve iniciar sessão através do Painel Agenda360.");
+            window.location.href = '/'; 
+        }
+
+        const API_TODO = '/api/todo';
+
+        let tarefasLocais = [];
+        let inatividadeTimer;
+        let alarmesJaTocados = {}; 
+        let alarmeAtivo = false;
+        let timersUndo = {};
+        const somAlarme = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+
+        // Helper para criar os cabeçalhos com o Token
+        function getHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
+
+        function interceptarErroAcesso(resposta) {
+            if (resposta.status === 401 || resposta.status === 403) {
+                alert("A sua sessão expirou. Por favor, faça login novamente.");
+                window.location.href = '/';
+                throw new Error("Não autorizado");
+            }
+            return resposta;
+        }
+
+        function dataDeHoje() {
+            const d = new Date();
+            const ano = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        function voltarAoPainel() { 
+            window.location.href = '/gestao.html'; 
+        }
+
+        function abrirPlanner() { 
+            window.location.href = '/planner.html'; 
+        }
+
+        const widget = document.getElementById('todo-widget-container');
+        const dragHandle = document.getElementById('drag-handle');
+        let isDragging = false, offsetX, offsetY;
+
+        function iniciarArraste(clientX, clientY) { isDragging = true; offsetX = clientX - widget.getBoundingClientRect().left; offsetY = clientY - widget.getBoundingClientRect().top; widget.style.bottom = 'auto'; widget.style.right = 'auto'; }
+        function moverWidget(clientX, clientY) { if (!isDragging) return; let newX = clientX - offsetX; let newY = clientY - offsetY; if (newX < 10) newX = 10; if (newY < 10) newY = 10; if (newX > window.innerWidth - 100) newX = window.innerWidth - 100; if (newY > window.innerHeight - 120) newY = window.innerHeight - 120; widget.style.left = newX + 'px'; widget.style.top = newY + 'px'; }
+        function pararArraste() { isDragging = false; }
+        
+        dragHandle.addEventListener('mousedown', (e) => iniciarArraste(e.clientX, e.clientY));
+        document.addEventListener('mousemove', (e) => moverWidget(e.clientX, e.clientY));
+        document.addEventListener('mouseup', pararArraste);
+        dragHandle.addEventListener('touchstart', (e) => { iniciarArraste(e.touches[0].clientX, e.touches[0].clientY); }, {passive: true});
+        document.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); moverWidget(e.touches[0].clientX, e.touches[0].clientY); } }, {passive: false});
+        document.addEventListener('touchend', pararArraste);
+
+        window.addEventListener('resize', () => {
+            const rect = widget.getBoundingClientRect();
+            let newX = rect.left;
+            let newY = rect.top;
+            if (newX > window.innerWidth - 100) newX = window.innerWidth - 100;
+            if (newY > window.innerHeight - 120) newY = window.innerHeight - 120;
+            if (widget.style.left !== '') widget.style.left = newX + 'px';
+            if (widget.style.top !== '') widget.style.top = newY + 'px';
+        });
+
+        window.onload = () => { 
+            document.getElementById('input-data').value = dataDeHoje();
+            carregarTarefas(); 
+        };
+
+        function togglePainel() {
+            const painel = document.getElementById('todo-panel');
+            if (painel.style.display !== 'block') {
+                const rect = widget.getBoundingClientRect(); const screenH = window.innerHeight; const screenW = window.innerWidth;
+                painel.style.top = 'auto'; painel.style.bottom = 'auto'; painel.style.left = 'auto'; painel.style.right = 'auto';
+                if (rect.top < screenH / 2) { painel.style.top = '110px'; } else { painel.style.bottom = '110px'; }
+                if (rect.left < screenW / 2) { painel.style.left = '0px'; } else { painel.style.right = '0px'; }
+                
+                document.getElementById('input-data').value = dataDeHoje();
+                painel.style.display = 'block'; carregarTarefas(); resetInatividade();
+            } else { 
+                painel.style.display = 'none'; clearTimeout(inatividadeTimer); cancelarTarefa(); cancelarEdicao(); cancelarDuplicacao(); 
+            }
+        }
+
+        function resetInatividade() {
+            clearTimeout(inatividadeTimer); const painel = document.getElementById('todo-panel');
+            if (painel.style.display === 'block' && !alarmeAtivo) {
+                const isActiveInput = document.activeElement.tagName === 'INPUT';
+                if (!isActiveInput) { inatividadeTimer = setTimeout(() => { painel.style.display = 'none'; cancelarTarefa(); cancelarEdicao(); cancelarDuplicacao(); }, 15000); }
+            }
+        }
+
+        document.addEventListener('mousemove', resetInatividade); document.addEventListener('click', resetInatividade); document.addEventListener('keyup', resetInatividade);
+
+        function toggleFormulario() { 
+            const form = document.getElementById('form-nova-tarefa'); 
+            if (form.style.display === 'block') {
+                form.style.display = 'none';
+            } else {
+                form.style.display = 'block';
+                document.getElementById('input-data').value = dataDeHoje();
+            }
+            document.getElementById('form-editar-tarefa').style.display = 'none';
+            document.getElementById('form-duplicar-tarefa').style.display = 'none';
+            document.getElementById('lista-tarefas').style.display = 'block';
+            resetInatividade(); 
+        }
+
+        function cancelarTarefa() { 
+            document.getElementById('input-nome').value = ''; 
+            document.getElementById('input-hora').value = ''; 
+            document.getElementById('input-data').value = dataDeHoje(); 
+            document.getElementById('form-nova-tarefa').style.display = 'none'; 
+        }
+        
+        function abrirEdicao(id, nome, hora, data) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-nome').value = nome;
+            document.getElementById('edit-hora').value = hora;
+            document.getElementById('edit-data').value = data;
+            
+            document.getElementById('lista-tarefas').style.display = 'none';
+            document.getElementById('form-nova-tarefa').style.display = 'none';
+            document.getElementById('form-duplicar-tarefa').style.display = 'none';
+            document.getElementById('form-editar-tarefa').style.display = 'block';
+            resetInatividade();
+        }
+
+        function cancelarEdicao() {
+            document.getElementById('form-editar-tarefa').style.display = 'none';
+            document.getElementById('lista-tarefas').style.display = 'block';
+            resetInatividade();
+        }
+
+        async function guardarEdicao() {
+            const id = document.getElementById('edit-id').value;
+            const nome = document.getElementById('edit-nome').value;
+            const hora = document.getElementById('edit-hora').value;
+            const data = document.getElementById('edit-data').value;
+
+            if (!nome || !hora || !data) return alert("Preencha todos os campos!");
+
+            await fetch(`${API_TODO}/tarefas/${id}/edit`, { 
+                method: 'PUT', 
+                headers: getHeaders(), 
+                body: JSON.stringify({ nome, hora_marcada: hora, data }) 
+            }).then(interceptarErroAcesso);
+            
+            cancelarEdicao();
+            carregarTarefas();
+        }
+
+        function abrirDuplicacao(nome) {
+            document.getElementById('dup-nome').value = nome;
+            document.getElementById('dup-data').value = dataDeHoje();
+            document.getElementById('dup-hora').value = '';
+
+            document.getElementById('lista-tarefas').style.display = 'none';
+            document.getElementById('form-nova-tarefa').style.display = 'none';
+            document.getElementById('form-editar-tarefa').style.display = 'none';
+            document.getElementById('form-duplicar-tarefa').style.display = 'block';
+            resetInatividade();
+        }
+
+        function cancelarDuplicacao() {
+            document.getElementById('form-duplicar-tarefa').style.display = 'none';
+            document.getElementById('lista-tarefas').style.display = 'block';
+            resetInatividade();
+        }
+
+        async function guardarDuplicacao() {
+            const nome = document.getElementById('dup-nome').value;
+            const hora = document.getElementById('dup-hora').value;
+            const data = document.getElementById('dup-data').value;
+
+            if (!nome || !hora || !data) return alert("Preencha todos os campos para duplicar!");
+
+            await fetch(`${API_TODO}/tarefas`, { 
+                method: 'POST', 
+                headers: getHeaders(), 
+                body: JSON.stringify({ nome, hora_marcada: hora, data: data }) 
+            }).then(interceptarErroAcesso);
+
+            cancelarDuplicacao();
+            carregarTarefas();
+        }
+
+        async function carregarTarefas() {
+            try {
+                const res = await fetch(`${API_TODO}/tarefas/dia/${dataDeHoje()}`, {
+                    headers: getHeaders()
+                });
+                interceptarErroAcesso(res);
+                const data = await res.json();
+                tarefasLocais = data.tarefas || []; renderizarTarefas();
+            } catch (erro) { console.error("Erro:", erro); }
+        }
+
+        async function adicionarTarefa() {
+            const nome = document.getElementById('input-nome').value; 
+            const hora = document.getElementById('input-hora').value;
+            const data = document.getElementById('input-data').value || dataDeHoje();
+            
+            if (!nome || !hora) return alert("Preencha o nome e a hora!");
+            await fetch(`${API_TODO}/tarefas`, { 
+                method: 'POST', 
+                headers: getHeaders(), 
+                body: JSON.stringify({ nome, hora_marcada: hora, data: data }) 
+            }).then(interceptarErroAcesso);
+            cancelarTarefa(); carregarTarefas();
+        }
+
+        async function atualizarStatus(id, novoStatus) {
+            await fetch(`${API_TODO}/tarefas/${id}/status`, { 
+                method: 'PUT', 
+                headers: getHeaders(), 
+                body: JSON.stringify({ status: novoStatus }) 
+            }).then(interceptarErroAcesso);
+            alarmeAtivo = false; carregarTarefas(); resetInatividade(); 
+        }
+
+        function marcarComoFeito(id) { atualizarStatus(id, "Done"); }
+
+        async function adiarTarefa(id) {
+            let tarefa = tarefasLocais.find(t => t.id === id); 
+            let novasTentativas = tarefa.tentativas + 1;
+            
+            let [h, m] = tarefa.hora_marcada.split(':').map(Number);
+            let dataTemp = new Date();
+            dataTemp.setHours(h, m + 5, 0); 
+            let novaHora = dataTemp.getHours().toString().padStart(2, '0') + ":" + dataTemp.getMinutes().toString().padStart(2, '0');
+            
+            await fetch(`${API_TODO}/tarefas/${id}/wait`, { 
+                method: 'PUT', 
+                headers: getHeaders(), 
+                body: JSON.stringify({ nova_hora: novaHora, tentativas: novasTentativas }) 
+            }).then(interceptarErroAcesso);
+            alarmeAtivo = false; resetInatividade(); carregarTarefas();
+        }
+
+        function solicitarConclusao(id) {
+            if(timersUndo[id]) return; 
+            timersUndo[id] = setTimeout(() => {
+                delete timersUndo[id];
+                marcarComoFeito(id); 
+            }, 4000);
+            renderizarTarefas(); 
+            resetInatividade();
+        }
+
+        function solicitarAdiamento(id) {
+            let tarefa = tarefasLocais.find(t => t.id === id); 
+            if (tarefa.tentativas >= 3) {
+                alert(`Atingiu o limite de adiamentos rápidos. Por favor, conclua a tarefa ou use o botão 'Editar' para a reprogramar para outra hora.`);
+                return; 
+            }
+            if(timersUndo[id]) return;
+            timersUndo[id] = setTimeout(() => {
+                delete timersUndo[id];
+                adiarTarefa(id);
+            }, 4000);
+            renderizarTarefas();
+            resetInatividade();
+        }
+
+        function cancelarUndo(id) {
+            if(timersUndo[id]) {
+                clearTimeout(timersUndo[id]);
+                delete timersUndo[id];
+                renderizarTarefas(); 
+            }
+        }
+
+        function renderizarTarefas() {
+            const lista = document.getElementById('lista-tarefas'); lista.innerHTML = ''; 
+            if (tarefasLocais.length === 0) { lista.innerHTML = '<p style="text-align:center; color:#999; font-size:0.9em;">Nenhuma tarefa pendente para hoje! 🎉</p>'; return; }
+            
+            tarefasLocais.forEach(tarefa => {
+                let extraClass = "", hideActions = "", infoStatus = "";
+                if (tarefa.status === "Done") { extraClass = "status-done"; hideActions = "hidden-actions"; infoStatus = "<span style='color: #006644; font-size: 0.8em;'>✅ Concluído</span>"; } 
+                else if (tarefa.status === "Lost") { extraClass = "status-lost"; hideActions = "hidden-actions"; infoStatus = "<span style='color: #FF5630; font-size: 0.8em;'>🥀 Perdido</span>"; }
+                
+                let passoDisplay = tarefa.tentativas + 1; 
+                if (passoDisplay > 3) passoDisplay = 3;
+                
+                const safeName = tarefa.nome.replace(/"/g, '&quot;').replace(/'/g, "\\'");
+
+                let isUndoActive = timersUndo[tarefa.id] ? true : false;
+                let displayNormalActions = isUndoActive ? "none" : "flex";
+                let displayUndoBlock = isUndoActive ? "flex" : "none";
+
+                lista.innerHTML += `
+                    <div class="task-item ${extraClass}">
+                        <div class="task-header"><span class="task-name">${tarefa.nome}</span><span class="task-time">⏰ ${tarefa.hora_marcada}</span></div>
+                        ${infoStatus}
+                        
+                        <div class="task-actions ${hideActions}" style="display: ${displayNormalActions}">
+                            <button class="btn-action btn-dup" onclick="abrirDuplicacao('${safeName}')">📋 Duplicar</button>
+                            <button class="btn-action btn-edit" onclick="abrirEdicao(${tarefa.id}, '${safeName}', '${tarefa.hora_marcada}', '${tarefa.data}')">✏️ Editar</button>
+                            <button class="btn-action btn-done" onclick="solicitarConclusao(${tarefa.id})">✅ Done</button>
+                            <button class="btn-action btn-wait" onclick="solicitarAdiamento(${tarefa.id})">⏳ Wait (${passoDisplay}/3)</button>
+                        </div>
+                        
+                        <div class="task-actions" style="display: ${displayUndoBlock}; align-items: center; justify-content: flex-end;">
+                            <span style="font-size: 11px; color: #e74c3c; margin-right: 10px; font-weight: bold; animation: pulse 1s infinite;">A processar...</span>
+                            <button class="btn-action" style="background: #FFEBE6; color: #FF5630; border: 1px solid #FF5630;" onclick="cancelarUndo(${tarefa.id})">↺ Desfazer (4s)</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        setInterval(() => {
+            const agora = new Date(); 
+            tarefasLocais.forEach(tarefa => {
+                if (tarefa.status !== "Pendente") return;
+                
+                const [h, m] = tarefa.hora_marcada.split(':').map(Number);
+                const horaTask = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), h, m, 0);
+                
+                const diffMs = agora.getTime() - horaTask.getTime();
+                const diffMin = Math.floor(diffMs / 60000);
+
+                if (diffMin >= 0 && diffMin <= 15 && (diffMin % 5 === 0)) {
+                    const ringId = `${tarefa.id}-${tarefa.hora_marcada}-${diffMin}`;
+                    
+                    if (!alarmesJaTocados[ringId]) {
+                        alarmesJaTocados[ringId] = true;
+                        
+                        if(document.getElementById('todo-panel').style.display !== 'block') { togglePainel(); }
+                        alarmeAtivo = true; clearTimeout(inatividadeTimer); 
+                        
+                        somAlarme.play().catch(e => console.log("Áudio necessita de interação prévia"));
+                        
+                        setTimeout(() => { somAlarme.pause(); somAlarme.currentTime = 0; }, 10000);
+                        setTimeout(() => { alert(`Alerta To Do: Está na hora de "${tarefa.nome}"!`); }, 300);
+                    }
+                }
+            });
+        }, 5000); 
+    </script>
+</body>
+</html>

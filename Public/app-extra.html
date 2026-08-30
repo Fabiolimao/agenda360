@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agenda360 - App Trabalhador</title>
+    <link rel="icon" type="image/png" href="/logo_fav.png">
+    <!-- PONTE PARA O VISUAL (CSS) -->
+    <link rel="stylesheet" href="app-extra.css">
+    <style>
+        /* ✨ SCROLLBARS ESTILO macOS (Limpo e Minimalista) */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 4px 0;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.7);
+        }
+
+        ::-webkit-scrollbar-button {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
+        /* 📱 ARQUITETURA APP SHELL (NATIVA E SÓLIDA) */
+        body,
+        html {
+            overflow: hidden !important;
+            /* Trava o scroll geral da página */
+            height: 100vh !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .screen.active {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+            /* Ecrã trancado na altura do dispositivo */
+        }
+
+        /* O cabeçalho mantém a sua forma e não encolhe */
+        .topbar {
+            flex-shrink: 0 !important;
+        }
+
+        /* O conteúdo do meio ganha o seu próprio scroll interno */
+        .content-area {
+            flex: 1 !important;
+            overflow-y: auto !important;
+            padding-bottom: 25px !important;
+            /* Apenas um pequeno respiro no fundo */
+        }
+
+        /* A doca fixa-se naturalmente no fundo, empurrada pelo conteúdo de cima */
+        .bottom-nav {
+            position: relative !important;
+            flex-shrink: 0 !important;
+            width: 100% !important;
+            max-width: inherit !important;
+            margin: 0 !important;
+            z-index: 2000 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            border-top: 1px solid #e2e8f0 !important;
+            border-radius: 24px 24px 0 0 !important;
+            box-shadow: 0 -10px 25px rgba(15, 23, 42, 0.05) !important;
+        }
+
+        /* ESTILOS DO TOGGLE SWITCH IOS PARA A FASE 5 */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background-color: var(--success-color, #10b981);
+        }
+
+        .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(20px);
+        }
+        /* 🖨️ REGRAS DE IMPRESSÃO (Substitui o App Shell para o papel) */
+        @media print {
+            body, html, .screen, .screen.active {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+            
+            .content-area {
+                overflow: visible !important;
+                height: auto !important;
+                padding: 0 !important;
+                display: block !important;
+            }
+
+            /* Esconder elementos de interface e botões */
+            .topbar, .bottom-nav, .no-print, .cal-controls {
+                display: none !important;
+            }
+
+            /* Forçar a impressão de cores de fundo nas grelhas da ACT */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* Garantir que as tabelas não quebram a meio da linha */
+            tr {
+                page-break-inside: avoid;
+            }
+
+            /* 🖨️ SOBREPOSIÇÃO DE ESTILOS INLINE PARA O MOTOR ACT */
+            
+            /* 1. Forçar a exibição do conteúdo real e destruir limites de altura/scroll */
+            #boxTesteACT {
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
+                visibility: visible !important;
+            }
+
+            /* 2. Impedir que a tabela gerada pelo JS seja tratada como caixa de scroll */
+            .print-table-wrapper {
+                overflow: visible !important;
+                max-height: none !important;
+            }
+
+            /* 3. Esconder a caixa fantasma permanentemente na impressão */
+            #boxActResultado {
+                display: none !important;
+            }
+
+            /* 🖨️ LIMPEZA DE PÁGINAS EM BRANCO FANTASMAS */
+            
+            /* 1. Ocultar rigorosamente todos os ecrãs que não sejam o ativo */
+            .screen:not(.active) {
+                display: none !important;
+                height: 0 !important;
+                overflow: hidden !important;
+            }
+
+            /* 2. Ocultar rigorosamente todas as abas (tabs) que não estejam ativas */
+            .tab-content:not(.active) {
+                display: none !important;
+                height: 0 !important;
+                overflow: hidden !important;
+            }
+            
+            /* 3. Prevenir margens globais que empurram o conteúdo para uma nova página */
+            @page {
+                margin-bottom: 1cm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="screenLogin" class="screen active">
+        <div class="auth-box">
+
+            <div class="lang-selector">
+                <span class="lang-badge active" id="badge_pt" onclick="setLang('pt')">PT</span>
+                <span class="lang-badge" id="badge_en" onclick="setLang('en')">EN</span>
+                <span class="lang-badge" id="badge_es" onclick="setLang('es')">ES</span>
+            </div>
+
+            <h1
+                style="font-size: 2.2rem; font-weight: 800; margin-bottom: 5px; letter-spacing: -1px; color: var(--text-color);">
+                Agenda<span style="color: var(--primary-color);">360</span></h1>
+            <h2 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 25px; font-weight: 400;"
+                data-i18n="login_title">Área do Trabalhador</h2>
+
+            <form id="formLogin">
+                <div class="form-group">
+                    <label data-i18n="login_email">E-mail Pessoal</label>
+                    <input type="email" id="logEmail" required>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="login_pwd">Palavra-passe / PIN</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="logSenha" required>
+                        <button type="button" class="toggle-pwd"
+                            onclick="togglePassword('logSenha', this); return false;">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-main" id="btnLog" data-i18n="btn_enter">Entrar</button>
+                <div id="errLogin" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="screenNovaSenha" class="screen">
+        <div class="auth-box">
+            <h2 style="color: var(--danger-color);" data-i18n="pwd_req_title">Segurança Obrigatória</h2>
+            <p data-i18n="pwd_req_desc">Está a usar uma senha provisória. Por favor, crie a sua Senha Pessoal para
+                continuar.</p>
+            <form id="formNovaSenha">
+                <div class="form-group">
+                    <label data-i18n="pwd_new">Nova Senha</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="novaSenha1" required>
+                        <button type="button" class="toggle-pwd"
+                            onclick="togglePassword('novaSenha1', this); return false;">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="pwd_confirm">Confirmar Nova Senha</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="novaSenha2" required>
+                        <button type="button" class="toggle-pwd"
+                            onclick="togglePassword('novaSenha2', this); return false;">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-main" id="btnSalvarSenha" data-i18n="btn_save_pwd">Gravar Senha
+                    Pessoal</button>
+                <div id="errSenha" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="screenPerfis" class="screen">
+        <div class="auth-box">
+            <h2 data-i18n="profiles_title">Múltiplos Perfis</h2>
+            <p data-i18n="profiles_desc">Encontrámos o seu registo em mais de uma empresa. Selecione a empresa onde vai
+                gerir o seu ponto agora:</p>
+            <div id="listaPerfis" style="margin-top: 20px;"></div>
+            <div id="errPerfil" class="error-msg"></div>
+        </div>
+    </div>
+
+    <div id="screenDashboard" class="screen" style="padding: 0; display: none;">
+
+        <div class="topbar">
+            <div>
+                <h1><span data-i18n="hello">Olá</span>, <span id="lblNome"></span></h1>
+                <div style="font-size: 0.75rem; opacity: 0.8;" id="lblAgencia"></div>
+            </div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <a href="manual-app.html" target="_blank" style="font-size:1.5rem; text-decoration:none;"
+                    title="Ajuda Rápida">📘</a>
+
+                <div style="position: relative;">
+                    <div style="font-size:1.2rem; cursor:pointer;"
+                        onclick="document.getElementById('menuIdiomasApp').classList.toggle('active')" title="Idioma">🌍
+                    </div>
+                    <div id="menuIdiomasApp" class="menu-idiomas-flutuante">
+                        <button class="idioma-btn"
+                            onclick="setLang('pt'); document.getElementById('menuIdiomasApp').classList.remove('active');">🇵🇹
+                            PT</button>
+                        <button class="idioma-btn"
+                            onclick="setLang('en'); document.getElementById('menuIdiomasApp').classList.remove('active');">🇬🇧
+                            EN</button>
+                        <button class="idioma-btn"
+                            onclick="setLang('es'); document.getElementById('menuIdiomasApp').classList.remove('active');">🇪🇸
+                            ES</button>
+                    </div>
+                </div>
+
+                <button class="btn-logout" onclick="fazerLogout()" data-i18n="btn_logout">Sair</button>
+            </div>
+        </div>
+
+        <div class="content-area">
+
+
+            <div id="tabFolhaACT" class="tab-content">
+                <div class="no-print">
+                    <h2>Folhas de Ponto (ACT)</h2>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Consulte os seus registos processados pela agência por cada local de trabalho.</p>
+                </div>
+
+                <div class="no-print" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 2; margin: 0; min-width: 120px;">
+                        <label>Mês de Consulta</label>
+                        <select id="actMesFiltro"></select>
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0; min-width: 80px;">
+                        <label>Ano</label>
+                        <input type="number" id="actAnoFiltro" value="2026">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0; min-width: 100px; display: flex; align-items: flex-end;">
+                        <button class="btn-main" style="width: 100%;" onclick="testarFolhaACT()">Pesquisar</button>
+                    </div>
+                </div>
+
+                <div id="boxTesteACT" class="no-print" style="display: none; background: #1e293b; color: #10b981; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+                    <h3 style="color: white; border-bottom: 1px solid #334155; padding-bottom: 10px; margin-bottom: 10px;">Output JSON da API (Auditoria Matemática)</h3>
+                    <pre id="jsonOutputACT" style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                </div>
+                
+                <div id="boxActResultado" style="display: none; background: white; padding: 15px; border-radius: 8px; border: 2px solid var(--info-color); margin-bottom: 15px; overflow-x: auto;">
+                    <h3 style="color: var(--info-color); margin-bottom: 15px; font-size: 1.1rem; text-align: center;">Folha de Ponto Padrão ACT</h3>
+                    <div id="actContent" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4;"></div>
+                </div>
+            </div>
+
+            <div id="tabCalendario" class="tab-content active">
+
+                <div id="boxAlertaAssinatura" class="no-print"
+                    style="display: none !important; background: #fee2e2; border: 2px solid var(--danger-color); padding: 15px; border-radius: 12px; margin-bottom: 20px; animation: fadeIn 0.5s;">
+                    <h3 style="color: #991b1b; font-size: 1.1rem; margin-bottom: 5px;" id="lbl_alert_sign_title">⚠️
+                        Validação Legal Pendente</h3>
+                    <p style="font-size: 0.9rem; color: #7f1d1d; margin-bottom: 10px;" id="lbl_alert_sign_desc">O seu
+                        gestor fechou a folha de assiduidade mensal e aguarda a sua assinatura digital.</p>
+                    <div id="listaAssinaturasPendentes"></div>
+                </div>
+
+                <div class="cal-controls">
+                    <div class="form-group" style="flex: 2; margin: 0;"><select id="calMesApp"
+                            onchange="gerarCalendarioApp()"></select></div>
+                    <div class="form-group" style="flex: 1; margin: 0;"><input type="number" id="calAnoApp" value="2026"
+                            onchange="gerarCalendarioApp()"></div>
+                </div>
+                <div
+                    style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    <div class="cal-header-row" id="cal_headers_row">
+                        <div>Dom</div>
+                        <div>Seg</div>
+                        <div>Ter</div>
+                        <div>Qua</div>
+                        <div>Qui</div>
+                        <div>Sex</div>
+                        <div>Sáb</div>
+                    </div>
+                    <div class="cal-grid" id="gridCalendarioApp"></div>
+                </div>
+                <div
+                    style="margin-top: 15px; display: flex; gap: 15px; justify-content: center; font-size: 0.8rem; color: #64748b; flex-wrap: wrap;">
+                    <span style="display:flex; align-items:center; gap:5px;">
+                        <div class="cal-dot dot-concluido"></div> <span data-i18n="lbl_done">Concluído</span>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:5px;">
+                        <div class="cal-dot dot-agendado"></div> <span data-i18n="lbl_scheduled">Agendado</span>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:5px;">
+                        <div class="cal-dot dot-falta"></div> <span data-i18n="lbl_missed">Cancelado/Falta</span>
+                    </span>
+                </div>
+
+                <div class="divisor-calendario"><span id="tituloFiltroTurnos">Turnos de Hoje</span></div>
+                <div id="listaEscalas"></div>
+            </div>
+
+            <div id="tabRelatorios" class="tab-content">
+                <div class="print-only">
+                    <!-- LOGO MANTIDO NA IMPRESSÃO PARA A EMPRESA -->
+                    <img src="/logo_agenda_360.jpeg" alt="Agenda360 Logo" style="max-height: 55px; border-radius: 4px;"
+                        onerror="this.style.display='none'">
+                    <h2>FOLHA DE ASSIDUIDADE / ATTENDANCE SHEET / HOJA DE ASISTENCIA</h2>
+                    <p>Trabalhador / Employee: <b id="printNomeTrabalhador">A carregar...</b></p>
+                    <p>Empresa / Company: <b id="printNomeAgencia">A carregar...</b></p>
+                </div>
+
+                <button class="btn-main no-print"
+                    style="background: var(--info-color); margin-bottom: 20px; font-size: 1.1rem;"
+                    onclick="window.print()" data-i18n="print_btn">🖨️ Imprimir a minha Folha PDF</button>
+
+
+                <div class="no-print" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 2; margin: 0; min-width: 120px;">
+                        <label data-i18n="rep_month">Mês de Consulta</label>
+                        <select id="repMesFiltro" onchange="gerarRelatorioApp()"></select>
+                    </div>
+                    <div class="form-group" style="flex: 1; margin: 0; min-width: 80px;">
+                        <label data-i18n="rep_year">Ano</label>
+                        <input type="number" id="repAnoFiltro" value="2026" onchange="gerarRelatorioApp()">
+                    </div>
+                    <div class="form-group" style="flex: 3; margin: 0; min-width: 200px;">
+                        <label data-i18n="rep_status">Estado do Turno</label>
+                        <select id="repFiltroStatusApp" onchange="gerarRelatorioApp()">
+                            <option value="" data-i18n="status_all">Todos os Estados</option>
+                            <option value="Concluído" data-i18n="status_done">Concluídos (Efetivos)</option>
+                            <option value="Agendado" data-i18n="status_sched">Agendados</option>
+                            <option value="Falta" data-i18n="status_missed">Faltas</option>
+                            <option value="Cancelado" data-i18n="status_canc">Cancelados</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-totais">
+                    <div class="total-box-mini">
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:bold;" data-i18n="rep_agendado_box">A
+                            TRABALHAR (Agendado)</div>
+                        <div id="lblHorasA-Trabalhar" class="val">00:00 h</div>
+                    </div>
+                    <div class="total-box-mini">
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:bold;" data-i18n="rep_efetivas_box">
+                            TRABALHADAS (Efetivas)</div>
+                        <div id="lblHorasTrabalhadas" class="val" style="color:var(--success-color);">00:00 h</div>
+                    </div>
+                </div>
+
+                <div id="boxCarimboVisual" class="no-print" style="display: none; margin-bottom: 15px;"></div>
+
+                <div id="listaRelatorioApp" class="no-print"></div>
+
+                <div id="boxGrelhaMensalApp" class="no-print"
+                    style="display: none; background: white; padding: 15px; border-radius: 8px; border: 2px solid var(--info-color); margin-bottom: 15px; overflow-x: auto;">
+                    <h3 style="color: var(--info-color); margin-bottom: 15px; font-size: 1.1rem; text-align: center;">
+                        Folha Mensal de Ponto Oficial</h3>
+                    <table
+                        style="width: 100%; border-collapse: collapse; min-width: 650px; font-size: 0.8rem; text-align: center;"
+                        id="tabelaGrelhaApp">
+                    </table>
+                </div>
+
+                <table id="tabelaPrint">
+                    <thead>
+                        <tr>
+                            <th data-i18n="th_date">Data</th>
+                            <th data-i18n="th_local">Local de Trabalho</th>
+                            <th data-i18n="th_func">Função</th>
+                            <th data-i18n="th_in">Entrada Real</th>
+                            <th data-i18n="th_out">Saída Real</th>
+                            <th data-i18n="th_hours">Horas Efetivas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaPrintBody"></tbody>
+                </table>
+
+                <div id="boxAssinarRodape" class="no-print" style="display: none;"></div>
+                <div id="assinaturaPrint"></div>
+            </div>
+
+        </div>
+        <div class="bottom-nav no-print">
+            <button class="nav-item" id="btnTabFolha" onclick="switchTabApp('tabFolhaACT', this)"><span style="font-size: 1.5rem; margin-bottom: 2px;">📄</span><div data-i18n="tab_folha">Folhas ACT</div></button>
+            <button class="nav-item active" id="btnTabCal" onclick="switchTabApp('tabCalendario', this)"><span style="font-size: 1.5rem; margin-bottom: 2px;">📅</span><div data-i18n="tab_home">Início & Ponto</div></button>
+            <button class="nav-item" id="btnTabRep" onclick="switchTabApp('tabRelatorios', this)"><span style="font-size: 1.5rem; margin-bottom: 2px;">📊</span><div data-i18n="tab_rep">Extrato Mensal</div></button>
+        </div>
+    </div>
+    
+<div id="modalCheckoutPausa" class="modal-overlay-content" style="z-index: 4000;">
+        <div class="modal-box-legal" style="text-align: center; max-width: 400px; padding: 25px;">
+            <h3 style="color: var(--primary-color); margin-bottom: 15px;" id="lbl_chk_title">⏱️ Controlo de Ponto e
+                Pausa</h3>
+            <div id="conteudoPausaCheckout"
+                style="margin-bottom: 25px; text-align: left; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <!-- Injetado pelo JS -->
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-main" style="background: #64748b; flex:1;"
+                    onclick="document.getElementById('modalCheckoutPausa').style.display='none'"
+                    id="lbl_chk_cancel">Cancelar</button>
+                <button class="btn-main" id="btnConfirmarSaidaReal" style="background: var(--danger-color); flex:2;">🏁
+                    Confirmar Saída</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalGPS" class="modal-overlay-content" style="z-index: 5000;">
+        <div class="modal-box-legal">
+            <h3 style="color: var(--primary-color); margin-bottom: 12px; font-weight: bold;" data-i18n="gps_title">Aviso
+                de Privacidade (GPS)</h3>
+            <div style="font-size: 0.85rem; color: #475569; line-height: 1.4; margin-bottom: 20px; text-align: justify;"
+                id="text_gps_legal"></div>
+            <button class="btn-main" id="btnConfirmarGPS" style="background: var(--success-color); margin-bottom: 10px;"
+                data-i18n="btn_gps_ok">Compreendi e Autorizo</button>
+            <button class="btn-main" id="btnForçarManual" style="background: #64748b;" data-i18n="btn_gps_no">Recusar /
+                Ponto Manual</button>
+        </div>
+    </div>
+
+    <!-- PONTE PARA O MOTOR (JAVASCRIPT) -->
+    <script src="app-extra-core.js"></script>
+    <script src="app-extra-auth.js"></script>
+    <script src="app-extra-escalas.js"></script>
+    <script src="app-extra-ponto.js"></script>
+    <script src="app-extra-relatorios.js"></script>
+
+    <!-- 📍 BÚSSOLA TEMPORAL (Sincroniza todas as caixas de data com o "Hoje" do telemóvel) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const hoje = new Date();
+            const anoAtual = hoje.getFullYear();
+            const mesAtual = hoje.getMonth(); // Janeiro = 0
+            const mesOpcoesListas = mesAtual + 1; // Para listas de <option> que usem "value=1"
+            
+            // 1. Calendário Operacional Principal
+            const calMesApp = document.getElementById('calMesApp');
+            const calAnoApp = document.getElementById('calAnoApp');
+            if(calMesApp && calAnoApp) {
+                // Algumas listas HTML usam "value=0" para Janeiro, outras usam "value=1". 
+                // A nossa app-extra usa os nomes de forma dinâmica pelo JS, mas força o selected pelo "value"
+                // A maioria das nossas comboboxes usa "value=1" para Janeiro no App Extra:
+                const options = Array.from(calMesApp.options);
+                const hasZeroIndex = options.some(opt => opt.value === "0");
+                calMesApp.value = hasZeroIndex ? mesAtual : mesOpcoesListas;
+                calAnoApp.value = anoAtual;
+            }
+
+            // 2. Extrato / Relatório Mensal (tabRelatorios)
+            const repMesFiltro = document.getElementById('repMesFiltro');
+            const repAnoFiltro = document.getElementById('repAnoFiltro');
+            if(repMesFiltro && repAnoFiltro) {
+                const options = Array.from(repMesFiltro.options);
+                const hasZeroIndex = options.some(opt => opt.value === "0");
+                repMesFiltro.value = hasZeroIndex ? mesAtual : mesOpcoesListas;
+                repAnoFiltro.value = anoAtual;
+            }
+
+            // 3. O Novo Módulo ACT (tabFolhaACT)
+            const actMesFiltro = document.getElementById('actMesFiltro');
+            const actAnoFiltro = document.getElementById('actAnoFiltro');
+            if(actMesFiltro && actAnoFiltro) {
+                const options = Array.from(actMesFiltro.options);
+                const hasZeroIndex = options.some(opt => opt.value === "0");
+                actMesFiltro.value = hasZeroIndex ? mesAtual : mesOpcoesListas;
+                actAnoFiltro.value = anoAtual;
+            }
+        });
+    </script>
+
+    <!-- FECHAR MENU SE CLICAR FORA -->
+    <script>
+        document.addEventListener('click', function (event) {
+            const menu = document.getElementById('menuIdiomasApp');
+            const globo = menu.previousElementSibling;
+            if (menu && menu.classList.contains('active') && event.target !== globo && !menu.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+
+</html>

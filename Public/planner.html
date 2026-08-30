@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>To Do 360 - Central de Comando</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00468b">
+    <link rel="apple-touch-icon" href="to_do_logo.jpg">
+    <style>
+        /* 🎨 IMPORTAÇÃO DA TIPOGRAFIA PREMIUM */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        :root { 
+            --primary: #00468b; /* Azul Agenda360 */
+            --primary-light: #e0f2fe; 
+            --action-color: #0ea5e9;
+            --bg: #F0F4F8; /* Slate Blue Premium */
+            --card-bg: #ffffff;
+            --text: #0f172a; 
+            --text-muted: #64748b;
+            --border: #e2e8f0; 
+            --fds: #f8fafc;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; font-family: 'Outfit', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px; overflow-x: hidden; }
+        
+        /* ✨ SCROLLBARS ESTILO macOS */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .app-layout { display: flex; flex-direction: column; gap: 25px; max-width: 1500px; width: 100%; }
+        .main-content { flex: 1; background: var(--card-bg); padding: 30px; border-radius: 24px; box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.05); border: 1px solid rgba(255,255,255,0.8); }
+        
+        header { border-bottom: 2px dashed var(--border); padding-bottom: 20px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .user-badge { background: var(--primary-light); color: var(--primary); padding: 8px 16px; border-radius: 20px; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.5px; }
+        .app-logo { max-height: 65px; width: auto; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid white; }
+        
+        .btn-sair { background: var(--card-bg); border: 1.5px solid var(--border); color: var(--text-muted); padding: 10px 20px; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .btn-sair:hover { background: var(--danger); color: white; border-color: var(--danger); transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.3); }
+
+        .btn-manual { background: var(--primary-light); color: var(--primary); border: 1.5px solid transparent; padding: 10px 20px; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-right: 10px; }
+        .btn-manual:hover { background: var(--primary); color: white; transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(0, 70, 139, 0.3); }
+
+        .control-panel { background: #f8fafc; border: 1px solid var(--border); padding: 20px; border-radius: 16px; margin-bottom: 25px; }
+        .control-title { font-weight: 800; margin-bottom: 15px; font-size: 1rem; color: var(--primary); text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+        .modes { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+        .dynamic-sticker-wrapper { position: relative; display: inline-block; }
+        .mode-btn { padding: 12px 20px; border: 1.5px solid var(--border); background: white; color: var(--text); border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .mode-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
+        .mode-btn.active { background: var(--primary); color: white; border-color: var(--primary); transform: scale(1.05); box-shadow: 0 10px 20px rgba(0, 70, 139, 0.2); }
+        .delete-sticker-btn { position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 16px; line-height: 22px; text-align: center; cursor: pointer; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .delete-sticker-btn:hover { transform: scale(1.1); }
+        .btn-add-custom { background: var(--primary); color: white; border: none; box-shadow: 0 4px 10px rgba(0, 70, 139, 0.2); }
+
+        .month-tabs-container { display: flex; overflow-x: auto; gap: 10px; margin-bottom: 20px; padding-bottom: 10px; scroll-behavior: smooth; }
+        .month-tabs-container::-webkit-scrollbar { display: none; }
+        .month-tab { padding: 10px 20px; background: #f1f5f9; color: var(--text-muted); border: 1.5px solid transparent; border-radius: 12px; font-weight: 800; font-size: 0.95rem; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; }
+        .month-tab:hover { background: #e2e8f0; color: var(--text); }
+        .month-tab.active { background: var(--primary); color: white; box-shadow: 0 8px 15px -5px rgba(0, 70, 139, 0.3); }
+
+        .calendar-grid { display: flex; flex-direction: column; gap: 10px; }
+        .month-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .month-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; text-align: center; table-layout: fixed; }
+        .month-table th { background: #f8fafc; padding: 15px 5px; color: var(--text-muted); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+        .month-table td { padding: 6px; cursor: pointer; position: relative; height: 75px; vertical-align: middle; border: 1px solid #f1f5f9; transition: background 0.2s; }
+        .month-table td:hover { background: #f8fafc; }
+        .day-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; border-radius: 12px; border: 2px solid transparent; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .day-fds .day-inner { background-color: var(--fds); color: var(--text-muted); }
+        .day-normal .day-inner { background-color: white; color: var(--text); }
+        .day-filled .day-inner { color: white; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .sticker { font-size: 20px; line-height: 1.2; margin-bottom: 2px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
+        .day-num { font-size: 1rem; font-weight: 600; }
+        .is-passed .day-inner { opacity: 0.4; filter: grayscale(50%); }
+        .is-today .day-inner { border: 2px solid var(--action-color); font-weight: 800; background: #f0f9ff; color: var(--action-color); }
+
+        .task-sidebar { width: 100%; background: var(--card-bg); padding: 30px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.8); box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.05); position: sticky; bottom: 0; z-index: 100; max-height: 45vh; overflow-y: auto; }
+        
+        .sidebar-title { font-size: 1.3rem; font-weight: 800; color: var(--primary); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px dashed var(--border); padding-bottom: 15px; letter-spacing: -0.5px; }
+        .btn-limpar-dia { background: #fff1f2; border: 1px solid #fecdd3; color: var(--danger); border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; transition: all 0.2s; }
+        .btn-limpar-dia:hover { background: var(--danger); color: white; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2); }
+
+        .task-list { display: flex; flex-direction: column; gap: 12px; }
+        
+        .task-item { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 8px; background: #fffbeb; padding: 16px; border-radius: 12px; font-size: 1rem; border-left: 4px solid var(--warning); box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: transform 0.2s; }
+        .task-item:hover { transform: translateX(4px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .task-item-content { display: flex; gap: 12px; align-items: flex-start; width: 100%; font-weight: 500; }
+        .task-item.completed { background: #f0fdf4; border-left-color: var(--success); opacity: 0.75; }
+        .task-item.completed span { text-decoration: line-through; color: #166534; }
+        .task-item.widget-task { border-left-color: #8b5cf6; background: #f5f3ff; } 
+        .task-item input[type="checkbox"] { margin-top: 4px; transform: scale(1.4); accent-color: var(--primary); cursor: pointer; }
+        
+        .no-tasks { font-size: 1rem; color: var(--text-muted); font-weight: 500; text-align: center; padding: 20px; border: 2px dashed var(--border); border-radius: 12px; }
+        
+        .btn-delete-task { background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 4px 8px; font-size: 1.2rem; opacity: 0.8; transition: transform 0.2s; }
+        .btn-delete-task:hover { opacity: 1; transform: scale(1.2); }
+        
+        .btn-wait { background: #fef3c7; color: #b45309; border: none; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: filter 0.1s; }
+        .btn-wait:hover { filter: brightness(0.95); }
+        .btn-edit { background: #f1f5f9; color: #475569; border: none; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: filter 0.1s; }
+        .btn-edit:hover { filter: brightness(0.95); }
+        .btn-dup { background: #e0f2fe; color: var(--secondary); border: none; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: filter 0.1s; }
+        .btn-dup:hover { filter: brightness(0.95); }
+
+        /* MODAIS PREMIUM */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); justify-content: center; align-items: flex-start; padding-top: 10vh; z-index: 1000; overflow-y: auto; backdrop-filter: blur(4px); }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 24px; width: 90%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); margin-bottom: 20px; animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .modal-content h3 { margin-top: 0; color: var(--primary); font-size: 1.4rem; font-weight: 800; margin-bottom: 5px; border-bottom: 1px dashed var(--border); padding-bottom: 10px; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 0.95rem; color: var(--text); margin-bottom: 8px; font-weight: 700; }
+        .modal-content input[type="text"], .modal-content input[type="time"], .modal-content input[type="date"] { width: 100%; padding: 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; outline: none; box-sizing: border-box; font-family: 'Outfit', sans-serif; transition: border-color 0.2s; background: var(--bg); }
+        .modal-content input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(0, 70, 139, 0.1); }
+        .modal-content input[type="color"] { width: 100%; height: 50px; border: none; border-radius: 12px; background: transparent; cursor: pointer; }
+        
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; }
+        .modal-buttons button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 1rem; transition: transform 0.1s, box-shadow 0.2s; }
+        .btn-confirm { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(0, 70, 139, 0.2); }
+        .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0, 70, 139, 0.3); }
+        .btn-cancel { background: #e2e8f0; color: var(--text-muted); }
+        .btn-cancel:hover { background: #cbd5e1; color: var(--text); }
+
+        @media (min-width: 992px) {
+            .app-layout { flex-direction: row; align-items: flex-start; }
+            .task-sidebar { width: 420px; position: sticky; top: 25px; max-height: 92vh; }
+            .main-content { flex: 1; }
+        }
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 2rem; }
+            .month-table td { height: 60px; padding: 4px; }
+            .day-inner { border-radius: 8px; }
+            .sticker { font-size: 16px; }
+            .day-num { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-layout" id="main-app">
+    <div class="main-content">
+        <header>
+            <span class="user-badge" id="display-user">A carregar...</span>
+            
+            <div onclick="window.location.href='/gestao.html?openWidget=true'" style="display: flex; align-items: center; gap: 15px; cursor: pointer; padding: 8px 20px; border-radius: 16px; transition: background 0.2s; background: var(--bg);" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='var(--bg)'" title="Voltar ao Widget Rápido">
+                <img src="to_do_logo.jpg" alt="To Do 360" class="app-logo" onerror="this.style.display='none'">
+                <div style="display: flex; flex-direction: column; text-align: left;">
+                    <span style="font-weight: 800; color: var(--primary); font-size: 1.2rem; letter-spacing: -0.5px;">To Do 360</span>
+                    <span style="font-size: 0.8rem; color: var(--action-color); font-weight: 700;">⬅ Voltar ao Widget Lateral</span>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center;">
+                <button class="btn-manual" onclick="abrirManual()">Manual de Uso</button>
+                <button class="btn-sair" onclick="sairParaAgenda()">🚪 Fechar Planner</button>
+            </div>
+        </header>
+        
+        <div class="control-panel">
+            <div class="control-title">1. Selecione uma ferramenta ou crie um sticker:</div>
+            <div class="modes" id="modes-container">
+                <button class="mode-btn active" id="view" onclick="setMode('view')">🔎 Ver To Do</button>
+                <button class="mode-btn" id="specific" onclick="setMode('specific')">📝 Texto Livre (Com Hora)</button>
+                <button class="mode-btn" id="normal" onclick="setMode('normal')">⚪ Limpar Dia</button>
+                <button class="mode-btn btn-add-custom" onclick="openCustomModal()">➕ Criar Sticker</button>
+            </div>
+        </div>
+        
+        <div class="month-tabs-container" id="month-tabs"></div>
+        <div class="calendar-grid" id="calendar-container"></div>
+    </div>
+    
+    <div class="task-sidebar" id="sidebar">
+        <div class="sidebar-title">
+            <span id="selected-date-title">Selecione um dia</span>
+            <button id="btn-limpar-dia" class="btn-limpar-dia" style="display: none;">🧹 Limpar Dia</button>
+        </div>
+        <div class="task-list" id="sidebar-task-list"><div class="no-tasks">Nenhum evento agendado.</div></div>
+    </div>
+</div>
+
+<div class="modal" id="todo-modal">
+    <div class="modal-content">
+        <h3>Adicionar Tarefa Rápida</h3>
+        <p id="modal-date-label" style="font-size: 0.95rem; color: var(--text-muted); font-weight: 600; margin-bottom: 20px;"></p>
+        <div class="input-group"><label>Descrição</label><input type="text" id="modal-input" placeholder="Ex: Tarefa importante..."></div>
+        <div class="input-group"><label>Hora da Tarefa ⏰</label><input type="time" id="modal-input-hora"></div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('todo-modal')">Cancelar</button>
+            <button class="btn-confirm" onclick="confirmSpecificTodo()">Gravar Tarefa</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="edit-todo-modal">
+    <div class="modal-content">
+        <h3>✏️ Editar Tarefa</h3>
+        <input type="hidden" id="edit-modal-id">
+        <div class="input-group">
+            <label>Descrição</label>
+            <input type="text" id="edit-modal-nome" placeholder="Nome da tarefa">
+        </div>
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                <label>Data</label>
+                <input type="date" id="edit-modal-data">
+            </div>
+            <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                <label>Hora ⏰</label>
+                <input type="time" id="edit-modal-hora">
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('edit-todo-modal')">Cancelar</button>
+            <button class="btn-confirm" onclick="saveEditTodo()">Salvar Edição</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="dup-todo-modal">
+    <div class="modal-content">
+        <h3>📋 Duplicar Tarefa</h3>
+        <div class="input-group">
+            <label>Descrição</label>
+            <input type="text" id="dup-modal-nome" placeholder="Nome da tarefa">
+        </div>
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                <label>Data Destino</label>
+                <input type="date" id="dup-modal-data">
+            </div>
+            <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                <label>Hora ⏰</label>
+                <input type="time" id="dup-modal-hora">
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('dup-todo-modal')">Cancelar</button>
+            <button class="btn-confirm" onclick="saveDupTodo()">Duplicar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="custom-sticker-modal">
+    <div class="modal-content">
+        <h3>Criar Novo Sticker</h3>
+        <div class="input-group"><label>Emoji Visual</label><input type="text" id="custom-emoji" placeholder="Ex: 🏋️" maxlength="4"></div>
+        <div class="input-group"><label>Nome / Etiqueta</label><input type="text" id="custom-label" placeholder="Ex: Ginásio"></div>
+        <div class="input-group"><label>Cor de Fundo</label><input type="color" id="custom-color" value="#0ea5e9"></div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('custom-sticker-modal')">Cancelar</button>
+            <button class="btn-confirm" onclick="saveCustomSticker()">Criar Atalho</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="manual-modal">
+    <div class="modal-content" style="max-width: 550px;">
+        <h3 style="border-bottom: none; margin-bottom: 20px;">Manual do To Do 360</h3>
+        
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+            <h4 style="color: var(--primary); margin-bottom: 10px; font-size: 1.05rem; border-bottom: 1px solid var(--border); padding-bottom: 5px;">1. Modos do Calendário</h4>
+            <p style="margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted);">O Planner funciona selecionando primeiro a ferramenta no topo e clicando depois no dia:</p>
+            <ul style="padding-left: 20px; margin-bottom: 20px;">
+                <li style="margin-bottom: 8px;"><b>🔎 Ver To Do:</b> Clique num dia para listar as tarefas no painel inferior.</li>
+                <li style="margin-bottom: 8px;"><b>📝 Texto Livre:</b> Clique num dia para abrir o formulário e criar uma tarefa específica com hora.</li>
+                <li style="margin-bottom: 8px;"><b>🎨 Carimbos (Stickers):</b> Selecione um atalho (ou crie em ➕) e clique nos dias para os "carimbar" rapidamente (ex: Ginásio, Férias).</li>
+            </ul>
+
+            <h4 style="color: var(--primary); margin-bottom: 10px; font-size: 1.05rem; border-bottom: 1px solid var(--border); padding-bottom: 5px;">2. Gestão de Tarefas</h4>
+            <p style="margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted);">Ações disponíveis no painel de tarefas (em baixo):</p>
+            <ul style="padding-left: 20px; margin-bottom: 20px;">
+                <li style="margin-bottom: 8px;"><b>✅ Concluir:</b> Clique na caixa de seleção. Tem 4 segundos para desfazer (↺).</li>
+                <li style="margin-bottom: 8px;"><b>⏳ Wait:</b> Adia o alarme da tarefa em 5 minutos (limite de 3 adiamentos).</li>
+                <li style="margin-bottom: 8px;"><b>📋 Dup / ✏️ Edit:</b> Duplica a tarefa para outra data ou edita os seus detalhes.</li>
+            </ul>
+
+            <h4 style="color: var(--primary); margin-bottom: 10px; font-size: 1.05rem; border-bottom: 1px solid var(--border); padding-bottom: 5px;">3. Limpeza e Segurança</h4>
+            <ul style="padding-left: 20px; margin-bottom: 20px;">
+                <li style="margin-bottom: 8px;"><b>Apagar Sticker:</b> Selecione "⚪ Limpar Dia" no topo e clique no dia.</li>
+                <li style="margin-bottom: 8px;"><b>Esvaziar Dia Completo:</b> Abra o dia e clique no botão vermelho <b>🧹 Limpar Dia</b> no painel inferior (Atenção: apaga tudo definitivamente).</li>
+            </ul>
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 30px;">
+            <button class="btn-confirm" onclick="closeModal('manual-modal')" style="width: 100%;">Entendido</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const authToken = localStorage.getItem('agenda360_token');
+    if (!authToken) { 
+        alert("Acesso Negado! Deve iniciar sessão através do Painel Agenda360.");
+        window.location.href = '/'; 
+    }
+
+    const API_TODO = '/api/todo';
+
+    const monthsData = [
+        { name: "JANEIRO", days: 31, startDay: 4 }, { name: "FEVEREIRO", days: 28, startDay: 0 },
+        { name: "MARÇO", days: 31, startDay: 0 }, { name: "ABRIL", days: 30, startDay: 3 },
+        { name: "MAIO", days: 31, startDay: 5 }, { name: "JUNHO", days: 30, startDay: 1 },
+        { name: "JULHO", days: 31, startDay: 3 }, { name: "AGOSTO", days: 31, startDay: 6 },
+        { name: "SETEMBRO", days: 30, startDay: 2 }, { name: "OUTUBRO", days: 31, startDay: 4 },
+        { name: "NOVEMBRO", days: 30, startDay: 0 }, { name: "DEZEMBRO", days: 31, startDay: 2 }
+    ];
+
+    let myStickers = [];
+    let currentMode = 'view', activeSticker = { emoji: '', label: '', color: '' }, selectedDayId = null;
+    let todoDatabase = {}, cellDatabase = {}; 
+    const targetYear = 2026, today = new Date();
+    let activeMonthIndex = (today.getFullYear() === targetYear) ? today.getMonth() : 5; 
+
+    let timersUndo = {};
+
+    function getHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+        };
+    }
+
+    function interceptarErroAcesso(resposta) {
+        if (resposta.status === 401 || resposta.status === 403) {
+            alert("A sua sessão expirou. Por favor, faça login novamente.");
+            window.location.href = '/';
+            throw new Error("Não autorizado");
+        }
+        return resposta;
+    }
+
+    window.onload = async () => { 
+        try {
+            const resMe = await fetch('/api/me', { headers: getHeaders() });
+            if(resMe.ok) {
+                const meData = await resMe.json();
+                document.getElementById('display-user').innerText = '👤 ' + meData.nome;
+            }
+        } catch(e) {}
+        loadDataFromAPI();
+    };
+
+    function dataDeHoje() {
+        const d = new Date();
+        const ano = d.getFullYear();
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    function sairParaAgenda() { window.location.href = '/gestao.html'; }
+
+    async function loadDataFromAPI() {
+        try {
+            const resposta = await fetch(`${API_TODO}/carregar`, { headers: getHeaders() });
+            interceptarErroAcesso(resposta);
+            const dados = await resposta.json();
+            myStickers = dados.stickers && dados.stickers.length > 0 ? dados.stickers : [{ id: 'btn-ferias', emoji: '🏖️', label: 'Férias', color: '#10b981' }];
+            todoDatabase = dados.tarefas || {}; cellDatabase = dados.celulas || {};
+
+            const resTarefas = await fetch(`${API_TODO}/tarefas`, { headers: getHeaders() });
+            interceptarErroAcesso(resTarefas);
+            const widgetData = await resTarefas.json();
+            
+            if (widgetData.tarefas) {
+                widgetData.tarefas.forEach(t => {
+                    if(!t.data) return; 
+                    const [anoStr, mesStr, diaStr] = t.data.split('-');
+                    const targetDayId = `day-${parseInt(mesStr)-1}-${parseInt(diaStr)}`;
+                    
+                    if(!todoDatabase[targetDayId]) todoDatabase[targetDayId] = [];
+                    
+                    let existingTask = todoDatabase[targetDayId].find(ext => ext.isWidget && ext.widgetId === t.id);
+                    if(!existingTask) {
+                        todoDatabase[targetDayId].push({ 
+                            text: `⏰ ${t.hora_marcada} - ${t.nome}`, 
+                            completed: (t.status === 'Done' || t.status === 'Lost'), 
+                            isWidget: true, widgetId: t.id, tentativas: t.tentativas, 
+                            statusOriginal: t.status, nomeOriginal: t.nome, horaOriginal: t.hora_marcada, dataOriginal: t.data 
+                        });
+                    } else {
+                        existingTask.completed = (t.status === 'Done' || t.status === 'Lost');
+                        existingTask.statusOriginal = t.status;
+                        existingTask.text = `⏰ ${t.hora_marcada} - ${t.nome}`;
+                        existingTask.tentativas = t.tentativas;
+                        existingTask.horaOriginal = t.hora_marcada;
+                        existingTask.dataOriginal = t.data;
+                        existingTask.nomeOriginal = t.nome;
+                    }
+                });
+            }
+            renderStickerButtons(); buildCalendar();
+            
+            const hojeId = `day-${(today.getFullYear() === targetYear) ? today.getMonth() : 5}-${today.getDate()}`;
+            updateSidebar(selectedDayId || hojeId, (selectedDayId ? selectedDayId.split('-')[2] : today.getDate()), monthsData[(selectedDayId ? selectedDayId.split('-')[1] : ((today.getFullYear() === targetYear) ? today.getMonth() : 5))].name);
+        } catch (error) { console.error("Erro no carregamento:", error); }
+    }
+
+    async function saveDataToAPI() {
+        let purePlannerTasks = {};
+        Object.keys(todoDatabase).forEach(day => {
+            purePlannerTasks[day] = todoDatabase[day].filter(t => !t.isWidget);
+        });
+
+        try { 
+            const res = await fetch(`${API_TODO}/salvar`, { 
+                method: 'POST', 
+                headers: getHeaders(), 
+                body: JSON.stringify({ stickers: myStickers, tarefas: purePlannerTasks, celulas: cellDatabase }) 
+            }); 
+            interceptarErroAcesso(res);
+        } catch (e) {}
+    }
+
+    function renderStickerButtons() {
+        document.querySelectorAll('.dynamic-sticker-wrapper').forEach(el => el.remove());
+        const container = document.getElementById('modes-container'); const addBtn = document.querySelector('.btn-add-custom');
+        myStickers.forEach(sticker => {
+            const wrapper = document.createElement('div'); wrapper.className = 'dynamic-sticker-wrapper';
+            const btn = document.createElement('button'); btn.className = `mode-btn dynamic-sticker ${currentMode === sticker.id ? 'active' : ''}`; btn.id = sticker.id;
+            if(currentMode === sticker.id) { btn.style.backgroundColor = sticker.color; btn.style.color = '#fff'; } else { btn.style.backgroundColor = '#fff'; btn.style.color = 'var(--text)'; }
+            btn.style.borderColor = sticker.color; btn.innerHTML = `${sticker.emoji} ${sticker.label}`; btn.onclick = () => setMode(sticker.id, sticker.emoji, sticker.label, sticker.color);
+            wrapper.appendChild(btn);
+            if (sticker.id.startsWith('custom-')) {
+                const delBtn = document.createElement('span'); delBtn.className = 'delete-sticker-btn'; delBtn.innerHTML = '&times;'; delBtn.onclick = (e) => { e.stopPropagation(); deleteSticker(sticker.id); };
+                wrapper.appendChild(delBtn);
+            }
+            container.insertBefore(wrapper, addBtn);
+        });
+    }
+
+    function deleteSticker(id) { if (confirm("Excluir atalho?")) { myStickers = myStickers.filter(s => s.id !== id); if (currentMode === id) setMode('view'); renderStickerButtons(); saveDataToAPI(); } }
+
+    function setMode(modeId, emoji='', label='', color='') {
+        currentMode = modeId; activeSticker = { emoji, label, color };
+        document.querySelectorAll('.mode-btn').forEach(btn => { btn.classList.remove('active'); if(btn.classList.contains('dynamic-sticker')) { btn.style.backgroundColor = '#fff'; btn.style.color = 'var(--text)'; } });
+        const activeBtn = document.getElementById(modeId); if(activeBtn) { activeBtn.classList.add('active'); if(activeBtn.classList.contains('dynamic-sticker')) { activeBtn.style.backgroundColor = color; activeBtn.style.color = '#fff'; } }
+    }
+
+    function buildCalendar() {
+        const tabsContainer = document.getElementById('month-tabs'); tabsContainer.innerHTML = '';
+        monthsData.forEach((month, index) => {
+            const btn = document.createElement('button'); btn.className = `month-tab ${index === activeMonthIndex ? 'active' : ''}`; btn.innerText = index === activeMonthIndex ? month.name : month.name.substring(0, 3); btn.onclick = () => { activeMonthIndex = index; buildCalendar(); }; tabsContainer.appendChild(btn);
+        });
+        const container = document.getElementById('calendar-container'); container.innerHTML = '';
+        const month = monthsData[activeMonthIndex]; const card = document.createElement('div'); card.className = `month-card`;
+        let html = `<table class="month-table"><thead><tr><th>DOM</th><th>SEG</th><th>TER</th><th>QUA</th><th>QUI</th><th>SEX</th><th>SÁB</th></tr></thead><tbody>`; let dayCounter = 1;
+        for (let i = 0; i < 6; i++) {
+            if (dayCounter > month.days) break; html += `<tr>`;
+            for (let j = 0; j < 7; j++) {
+                if ((i === 0 && j < month.startDay) || dayCounter > month.days) { html += `<td></td>`; } 
+                else {
+                    const dayId = `day-${activeMonthIndex}-${dayCounter}`; const isWeekend = (j === 0 || j === 6);
+                    html += `<td id="${dayId}" class="${isWeekend ? 'day-fds' : 'day-normal'}" onclick="handleDayClick('${dayId}', ${dayCounter}, '${month.name}')"><div class="day-inner" id="inner-${dayId}"><span class="sticker" id="sticker-${dayId}"></span><span class="day-num">${dayCounter}</span></div></td>`;
+                    dayCounter++;
+                }
+            }
+            html += `</tr>`;
+        }
+        card.innerHTML = html + '</tbody></table>'; container.appendChild(card);
+        Object.keys(cellDatabase).forEach(dayId => {
+            if (dayId.startsWith(`day-${activeMonthIndex}-`)) {
+                const el = document.getElementById(dayId), innerEl = document.getElementById(`inner-${dayId}`), innerSticker = document.getElementById(`sticker-${dayId}`);
+                if (el && innerEl && innerSticker) { el.className = cellDatabase[dayId].class; if(cellDatabase[dayId].color) innerEl.style.backgroundColor = cellDatabase[dayId].color; if(cellDatabase[dayId].sticker) innerSticker.innerText = cellDatabase[dayId].sticker; }
+            }
+        });
+        applyAutomaticTiming();
+    }
+
+    function handleDayClick(dayId, dayNum, monthName) {
+        selectedDayId = dayId; const el = document.getElementById(dayId), innerEl = document.getElementById(`inner-${dayId}`), innerSticker = document.getElementById(`sticker-${dayId}`);
+        const isWeekend = el.className.includes('day-fds') || el.className.includes('day-normal') ? (new Date(targetYear, parseInt(dayId.split('-')[1]), dayNum).getDay() % 6 === 0) : false;
+        if (currentMode === 'view') { updateSidebar(dayId, dayNum, monthName); } 
+        else if (currentMode === 'specific') { document.getElementById('modal-date-label').innerText = `Data Alvo: ${dayNum} de ${monthName}`; document.getElementById('modal-input').value = ''; document.getElementById('modal-input-hora').value = ''; document.getElementById('todo-modal').style.display = 'flex'; } 
+        else if (currentMode === 'normal') { el.className = isWeekend ? 'day-fds' : 'day-normal'; innerEl.style.backgroundColor = ''; innerSticker.innerText = ''; todoDatabase[dayId] = todoDatabase[dayId]?.filter(t => t.isWidget) || []; cellDatabase[dayId] = { class: el.className, sticker: '', color: '' }; applyAutomaticTiming(); updateSidebar(dayId, dayNum, monthName); saveDataToAPI(); } 
+        else {
+            el.className = `day-filled`; innerEl.style.backgroundColor = activeSticker.color; innerSticker.innerText = activeSticker.emoji;
+            if (!todoDatabase[dayId]) todoDatabase[dayId] = []; const autoText = `${activeSticker.emoji} ${activeSticker.label}`;
+            const widgetTasks = todoDatabase[dayId].filter(t => t.isWidget); const otherTasks = todoDatabase[dayId].filter(t => !t.isWidget && !t.isAuto);
+            todoDatabase[dayId] = [{ text: autoText, completed: false, isAuto: true }, ...otherTasks, ...widgetTasks];
+            cellDatabase[dayId] = { class: el.className, sticker: activeSticker.emoji, color: activeSticker.color }; applyAutomaticTiming(); updateSidebar(dayId, dayNum, monthName); saveDataToAPI();
+        }
+    }
+
+    function applyAutomaticTiming() {
+        document.querySelectorAll('.month-table td[id^="day-"]').forEach(el => {
+            const parts = el.id.split('-'); const cellDate = new Date(targetYear, parseInt(parts[1]), parseInt(parts[2])); const compToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            el.classList.remove('is-passed', 'is-today'); if (cellDate < compToday) el.classList.add('is-passed'); if (cellDate.getTime() === compToday.getTime()) el.classList.add('is-today');
+        });
+    }
+
+    async function acionarLimpezaDia(dayId) {
+        if (!dayId) return;
+        if (!confirm("🚨 ATENÇÃO: Tem a certeza que deseja APAGAR TODAS as tarefas, rotinas e anotações deste dia? Esta ação é definitiva!")) return;
+
+        const el = document.getElementById(dayId);
+        const innerEl = document.getElementById(`inner-${dayId}`);
+        const innerSticker = document.getElementById(`sticker-${dayId}`);
+        
+        const dataParts = dayId.split('-');
+        
+        if (el && innerEl && innerSticker) {
+            const isWeekend = el.className.includes('day-fds') || el.className.includes('day-normal') ? (new Date(targetYear, parseInt(dataParts[1]), parseInt(dataParts[2])).getDay() % 6 === 0) : false;
+            el.className = isWeekend ? 'day-fds' : 'day-normal';
+            innerEl.style.backgroundColor = '';
+            innerSticker.innerText = '';
+            cellDatabase[dayId] = { class: el.className, sticker: '', color: '' };
+        }
+
+        const yyyy = targetYear;
+        const mm = (parseInt(dataParts[1])+1).toString().padStart(2, '0');
+        const dd = dataParts[2].padStart(2, '0');
+        const targetDateStr = `${yyyy}-${mm}-${dd}`;
+
+        try {
+            const res = await fetch(`${API_TODO}/tarefas/dia/${targetDateStr}`, {
+                method: 'DELETE',
+                headers: getHeaders()
+            });
+            interceptarErroAcesso(res);
+        } catch (e) { console.error(e); }
+
+        todoDatabase[dayId] = [];
+        applyAutomaticTiming();
+        updateSidebar(dayId, dataParts[2], monthsData[dataParts[1]].name);
+        saveDataToAPI();
+    }
+
+    function openCustomModal() { document.getElementById('custom-emoji').value = ''; document.getElementById('custom-label').value = ''; document.getElementById('custom-sticker-modal').style.display = 'flex'; }
+    function saveCustomSticker() { myStickers.push({ id: 'custom-' + Date.now(), emoji: document.getElementById('custom-emoji').value.trim() || '📌', label: document.getElementById('custom-label').value.trim() || 'Evento', color: document.getElementById('custom-color').value }); renderStickerButtons(); setMode(myStickers[myStickers.length-1].id, myStickers[myStickers.length-1].emoji, myStickers[myStickers.length-1].label, myStickers[myStickers.length-1].color); saveDataToAPI(); closeModal('custom-sticker-modal'); }
+
+    async function confirmSpecificTodo() {
+        const val = document.getElementById('modal-input').value.trim(); const horaVal = document.getElementById('modal-input-hora').value;
+        if (!val || !horaVal) return alert("Introduza a descrição e a hora!");
+        
+        if (selectedDayId) {
+            const parts = selectedDayId.split('-');
+            const yyyy = targetYear;
+            const mm = (parseInt(parts[1])+1).toString().padStart(2, '0');
+            const dd = parts[2].padStart(2, '0');
+            const targetDateStr = `${yyyy}-${mm}-${dd}`;
+
+            try {
+                const res = await fetch(`${API_TODO}/tarefas`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ nome: val, hora_marcada: horaVal, data: targetDateStr })
+                });
+                interceptarErroAcesso(res);
+            } catch (e) { console.error(e) }
+
+            await loadDataFromAPI();
+        }
+        closeModal('todo-modal');
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function abrirManual() { 
+        document.getElementById('manual-modal').style.display = 'flex'; 
+    }
+
+    function openEditModal(id, nome, hora, data) {
+        document.getElementById('edit-modal-id').value = id;
+        document.getElementById('edit-modal-nome').value = nome;
+        document.getElementById('edit-modal-hora').value = hora;
+        document.getElementById('edit-modal-data').value = data;
+        document.getElementById('edit-todo-modal').style.display = 'flex';
+    }
+
+    async function saveEditTodo() {
+        const id = document.getElementById('edit-modal-id').value;
+        const nome = document.getElementById('edit-modal-nome').value;
+        const hora = document.getElementById('edit-modal-hora').value;
+        const data = document.getElementById('edit-modal-data').value;
+
+        if (!nome || !hora || !data) return alert("Preencha todos os campos!");
+
+        try {
+            const res = await fetch(`${API_TODO}/tarefas/${id}/edit`, {
+                method: 'PUT', headers: getHeaders(), body: JSON.stringify({ nome, hora_marcada: hora, data })
+            });
+            interceptarErroAcesso(res);
+            closeModal('edit-todo-modal');
+            await loadDataFromAPI();
+        } catch (e) { console.error(e); }
+    }
+
+    function openDupModal(nome) {
+        document.getElementById('dup-modal-nome').value = nome;
+        document.getElementById('dup-modal-data').value = dataDeHoje();
+        document.getElementById('dup-modal-hora').value = '';
+        document.getElementById('dup-todo-modal').style.display = 'flex';
+    }
+
+    async function saveDupTodo() {
+        const nome = document.getElementById('dup-modal-nome').value;
+        const hora = document.getElementById('dup-modal-hora').value;
+        const data = document.getElementById('dup-modal-data').value;
+
+        if (!nome || !hora || !data) return alert("Preencha todos os campos para duplicar!");
+
+        try {
+            const res = await fetch(`${API_TODO}/tarefas`, {
+                method: 'POST', headers: getHeaders(), body: JSON.stringify({ nome, hora_marcada: hora, data: data })
+            });
+            interceptarErroAcesso(res);
+            closeModal('dup-todo-modal');
+            await loadDataFromAPI(); 
+        } catch (e) { console.error(e); }
+    }
+    
+    function getTaskByUiId(dayId, uiId) {
+        if (uiId.startsWith('wid-')) {
+            const wId = parseInt(uiId.replace('wid-', ''));
+            return todoDatabase[dayId].find(t => t.isWidget && t.widgetId === wId);
+        } else {
+            const idx = parseInt(uiId.split('-').pop());
+            return todoDatabase[dayId][idx];
+        }
+    }
+
+    function solicitarConclusaoPlanner(dayId, uiId, event) {
+        if (event) event.preventDefault();
+        if (timersUndo[uiId]) return;
+        timersUndo[uiId] = setTimeout(() => { delete timersUndo[uiId]; toggleTask(dayId, uiId); }, 4000);
+        updateSidebar(dayId, dayId.split('-')[2], monthsData[dayId.split('-')[1]].name);
+    }
+
+    function solicitarAdiamentoPlanner(dayId, uiId) {
+        const task = getTaskByUiId(dayId, uiId);
+        if (!task) return;
+        let novasTentativas = (task.tentativas || 0) + 1; 
+        if (novasTentativas > 3) { alert(`Atingiu o limite de adiamentos rápidos.`); return; }
+        if (timersUndo[uiId]) return;
+        timersUndo[uiId] = setTimeout(() => { delete timersUndo[uiId]; adiarTarefaWidget(dayId, uiId); }, 4000);
+        updateSidebar(dayId, dayId.split('-')[2], monthsData[dayId.split('-')[1]].name);
+    }
+
+    function cancelarUndoPlanner(dayId, uiId) {
+        if (timersUndo[uiId]) {
+            clearTimeout(timersUndo[uiId]); delete timersUndo[uiId];
+            updateSidebar(dayId, dayId.split('-')[2], monthsData[dayId.split('-')[1]].name);
+        }
+    }
+
+    async function deleteWidgetTask(widgetId) {
+        if (!confirm("Tem a certeza que deseja apagar esta tarefa definitivamente?")) return;
+        try {
+            const res = await fetch(`${API_TODO}/tarefas/${widgetId}`, { method: 'DELETE', headers: getHeaders() });
+            interceptarErroAcesso(res);
+            await loadDataFromAPI(); 
+        } catch (e) { console.error(e); }
+    }
+
+    function updateSidebar(dayId, dayNum, monthName) {
+        const isToday = (new Date(targetYear, parseInt(dayId.split('-')[1]), parseInt(dayId.split('-')[2])).getTime() === new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime());
+        document.getElementById('selected-date-title').innerHTML = `${dayNum} de ${monthName} ${isToday ? '<span style="color:var(--action-color); font-size:12px; font-weight:800; background:#f0f9ff; padding:4px 8px; border-radius:12px;">(HOJE)</span>' : ''}`;
+        
+        const btnLimpar = document.getElementById('btn-limpar-dia');
+        if (btnLimpar) { btnLimpar.style.display = 'block'; btnLimpar.onclick = () => acionarLimpezaDia(dayId); }
+
+        const listContainer = document.getElementById('sidebar-task-list'); listContainer.innerHTML = ''; const tasks = todoDatabase[dayId] || [];
+        if (tasks.length === 0) { listContainer.innerHTML = '<div class="no-tasks">Nenhum evento agendado para este dia.</div>'; return; }
+        
+        tasks.forEach((task, index) => {
+            const uiId = task.isWidget ? `wid-${task.widgetId}` : `man-${dayId}-${index}`;
+            const isUndoActive = timersUndo[uiId] ? true : false;
+            
+            const item = document.createElement('div'); 
+            item.className = `task-item ${task.completed ? 'completed' : ''} ${task.isWidget ? 'widget-task' : ''}`;
+            
+            if (isUndoActive) {
+                item.innerHTML = `
+                    <div class="task-item-content" style="align-items: center; justify-content: space-between; width: 100%;">
+                        <span style="font-size: 0.9rem; color: var(--danger); font-weight: 800; animation: pulse 1s infinite; flex: 1;">A processar a ação...</span>
+                        <button style="background: #fef2f2; color: var(--danger); border: 1.5px solid var(--danger); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; transition: transform 0.1s;" onclick="cancelarUndoPlanner('${dayId}', '${uiId}')" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Desfazer (4s)</button>
+                    </div>`;
+            } else {
+                let btnLixo = "";
+                if (task.isWidget) {
+                    if (task.statusOriginal === 'Lost') {
+                        btnLixo = `<button class="btn-delete-task" onclick="deleteWidgetTask(${task.widgetId})" title="Apagar Tarefa">🗑️</button><span style="color:var(--danger); font-weight:800; font-size:0.85rem; background:#fef2f2; padding:4px 8px; border-radius:6px; border:1px solid #fecdd3;">🥀 LOST</span>`;
+                    } else if (task.completed) {
+                        btnLixo = `<button class="btn-delete-task" onclick="deleteWidgetTask(${task.widgetId})" title="Apagar Tarefa">🗑️</button><span style="color:#166534; font-weight:800; font-size:0.85rem; background:#dcfce7; padding:4px 8px; border-radius:6px; border:1px solid #bbf7d0;">✅ DONE</span>`;
+                    } else {
+                        const nomeSeguro = (task.nomeOriginal || "Tarefa Antiga").replace(/"/g, '&quot;').replace(/'/g, "\\'");
+                        const horaSegura = task.horaOriginal || "00:00"; const dataSegura = task.dataOriginal || ""; const tentativasSeguras = task.tentativas || 0;
+                        let passoDisplay = tentativasSeguras + 1; if (passoDisplay > 3) passoDisplay = 3;
+
+                        btnLixo = `<button class="btn-delete-task" onclick="deleteWidgetTask(${task.widgetId})" title="Apagar Tarefa">🗑️</button>
+                                   <button class="btn-dup" onclick="openDupModal('${nomeSeguro}')">📋 Duplicar</button>
+                                   <button class="btn-edit" onclick="openEditModal(${task.widgetId}, '${nomeSeguro}', '${horaSegura}', '${dataSegura}')">✏️ Editar</button>
+                                   <button class="btn-wait" onclick="solicitarAdiamentoPlanner('${dayId}', '${uiId}')">⏳ Wait (${passoDisplay}/3)</button>`;
+                    }
+                } else { btnLixo = `<button class="btn-delete-task" onclick="deleteTask('${dayId}', ${index})">🗑️</button>`; }
+
+                item.innerHTML = `<div class="task-item-content"><input type="checkbox" ${task.completed ? 'checked' : ''} ${task.statusOriginal === 'Lost' ? 'disabled' : ''} onclick="solicitarConclusaoPlanner('${dayId}', '${uiId}', event)"><span>${task.text}</span></div><div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; width: 100%; margin-top: 10px; border-top: 1px dashed rgba(0,0,0,0.05); padding-top: 10px;">${btnLixo}</div>`;
+            }
+            listContainer.appendChild(item);
+        });
+    }
+
+    async function toggleTask(dayId, uiId) { 
+        const task = getTaskByUiId(dayId, uiId);
+        if (!task) return;
+        task.completed = !task.completed; 
+        if (task.isWidget) { 
+            const res = await fetch(`${API_TODO}/tarefas/${task.widgetId}/status`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify({ status: task.completed ? "Done" : "Pendente" }) }); 
+            interceptarErroAcesso(res); loadDataFromAPI(); 
+        } else { saveDataToAPI(); updateSidebar(dayId, dayId.split('-')[2], monthsData[dayId.split('-')[1]].name); } 
+    }
+    
+    async function adiarTarefaWidget(dayId, uiId) { 
+        const task = getTaskByUiId(dayId, uiId); if (!task) return;
+        let novasTentativas = (task.tentativas || 0) + 1; 
+        if (novasTentativas > 3) { alert(`Atingiu o limite de adiamentos rápidos.`); return; } 
+        else { 
+            let horaAtual = task.horaOriginal || "00:00";
+            let [h, m] = horaAtual.split(':').map(Number); let dataTemp = new Date(); dataTemp.setHours(h, m + 5, 0); 
+            let novaHora = dataTemp.getHours().toString().padStart(2, '0') + ":" + dataTemp.getMinutes().toString().padStart(2, '0'); 
+            const res = await fetch(`${API_TODO}/tarefas/${task.widgetId}/wait`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify({ nova_hora: novaHora, tentativas: novasTentativas }) }); 
+            interceptarErroAcesso(res);
+        } 
+        loadDataFromAPI(); 
+    }
+    
+    function deleteTask(dayId, idx) { todoDatabase[dayId].splice(idx, 1); saveDataToAPI(); updateSidebar(dayId, dayId.split('-')[2], monthsData[dayId.split('-')[1]].name); }
+
+    let alarmesJaTocados = {};
+    const somAlarme = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+
+    setInterval(() => {
+        const agora = new Date();
+        const hojeId = `day-${(agora.getFullYear() === targetYear) ? agora.getMonth() : 5}-${agora.getDate()}`;
+        const tarefasDeHoje = todoDatabase[hojeId] || [];
+
+        tarefasDeHoje.forEach(tarefa => {
+            if (!tarefa.isWidget || tarefa.completed || tarefa.statusOriginal === "Lost" || tarefa.statusOriginal === "Done") return;
+            const horaAtual = tarefa.horaOriginal; if (!horaAtual) return;
+            const [h, m] = horaAtual.split(':').map(Number);
+            const horaTask = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), h, m, 0);
+
+            const diffMs = agora.getTime() - horaTask.getTime();
+            const diffMin = Math.floor(diffMs / 60000);
+
+            if (diffMin >= 0 && diffMin <= 15 && (diffMin % 5 === 0)) {
+                const ringId = `${tarefa.widgetId}-${horaAtual}-${diffMin}`;
+                if (!alarmesJaTocados[ringId]) {
+                    alarmesJaTocados[ringId] = true;
+                    somAlarme.play().catch(e => console.log("Áudio em espera de interação."));
+                    setTimeout(() => { somAlarme.pause(); somAlarme.currentTime = 0; }, 10000);
+                    setTimeout(() => { alert(`⏰ Alerta To Do: Está na hora de "${tarefa.nomeOriginal}"!`); }, 300);
+                }
+            }
+        });
+    }, 5000);
+</script>
+</body>
+</html>

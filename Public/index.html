@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda360 - Acesso ao Sistema</title>
+    <link rel="icon" type="image/png" href="/logo_fav.png">
+    <style>
+        :root { --primary-color: #00468b; --bg-color: #f1f5f9; --text-color: #0f172a; --card-bg: #ffffff; --border-color: #e2e8f0; --warning-color: #f59e0b; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        
+        .login-wrapper { width: 100%; max-width: 420px; background: var(--card-bg); padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+        .login-wrapper img { max-width: 160px; margin-bottom: 25px; border-radius: 8px; }
+        
+        .tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 25px; }
+        .tab-btn { flex: 1; padding: 12px; background: none; border: none; font-size: 0.95rem; font-weight: bold; color: #64748b; cursor: pointer; transition: 0.3s; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+        .tab-btn:hover { color: var(--primary-color); }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; text-align: left; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px; color: #475569; }
+        .form-group input { width: 100%; padding: 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; outline: none; transition: 0.2s; }
+        .form-group input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 70, 139, 0.1); }
+
+        .password-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+        .password-wrapper input { width: 100%; padding-right: 40px; }
+        .toggle-pwd { position: absolute; right: 10px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b; padding: 0; z-index: 10; }
+
+        .btn-main { width: 100%; padding: 15px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px; }
+        .btn-main:hover { background: #00366d; }
+        .btn-main:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        .app-link { display: block; margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-color); color: var(--primary-color); font-weight: bold; text-decoration: none; font-size: 0.95rem; }
+        .app-link:hover { text-decoration: underline; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(3px); padding: 20px; }
+        .modal-box { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 400px; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; cursor: pointer; color: #94a3b8; border: none; background: none; }
+        .close-btn:hover { color: #0f172a; }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <img src="/logo_agenda_360.jpeg" alt="Agenda360 Logo" onerror="this.style.display='none'">
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('tab-gestao', this)">Portal Corporativo</button>
+            <button class="tab-btn" onclick="showTab('tab-master', this)">Acesso Master</button>
+        </div>
+
+        <div id="tab-gestao" class="tab-content active">
+            <form onsubmit="loginGestao(event)">
+                <div class="form-group">
+                    <label>E-mail Profissional</label>
+                    <input type="email" id="emailGestao" required placeholder="exemplo@empresa.com">
+                </div>
+                <div class="form-group">
+                    <label>Palavra-passe</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="senhaGestao" required>
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('senhaGestao', this)">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-main" id="btnGestao">Entrar no Painel</button>
+            </form>
+        </div>
+
+        <div id="tab-master" class="tab-content">
+            <form onsubmit="loginMaster(event)">
+                <div class="form-group">
+                    <label>Senha de Administração Técnica</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="senhaMaster" required placeholder="••••••••">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('senhaMaster', this)">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-main" id="btnMaster" style="background-color: #0f172a;">Acesso Master</button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 15px;">
+                <button onclick="abrirModalRecuperacao()" style="background:none; border:none; color:#64748b; font-size:0.85rem; text-decoration:underline; cursor:pointer;">Esqueci-me da Senha Master</button>
+            </div>
+        </div>
+
+        <a href="/app-extra.html" class="app-link">📱 Ir para a App do Trabalhador ➔</a>
+    </div>
+
+    <div id="modalRecuperacao" class="modal-overlay">
+        <div class="modal-box">
+            <button class="close-btn" onclick="fecharModalRecuperacao()">&times;</button>
+            <h3 style="color: var(--primary-color); margin-bottom: 10px; font-size: 1.3rem;">Protocolo Quebra-Vidro</h3>
+            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px; line-height: 1.5;">Insira o seu <b>PIN de Segurança</b> para esmagar a senha atual e criar uma nova imediatamente.</p>
+            
+            <form onsubmit="recuperarSenhaMaster(event)">
+                <div class="form-group" style="text-align: left;">
+                    <label>PIN de Segurança</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="pinSeguranca" required placeholder="O seu PIN secreto">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('pinSeguranca', this)">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label>Nova Senha Master</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="novaSenhaRecuperacao" required placeholder="Mín. 8 caracteres, 1 Maiúscula, 1 Número">
+                        <button type="button" class="toggle-pwd" onclick="togglePassword('novaSenhaRecuperacao', this)">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-main" id="btnRecuperar" style="background-color: var(--warning-color); color: black;">Redefinir e Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        localStorage.clear();
+
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') { input.type = 'text'; btn.innerText = '🙈'; } 
+            else { input.type = 'password'; btn.innerText = '👁️'; }
+        }
+
+        function showTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        async function loginGestao(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnGestao');
+            const email = document.getElementById('emailGestao').value.trim();
+            const senha = document.getElementById('senhaGestao').value;
+            
+            btn.innerText = "A validar..."; btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/agencias/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    if (data.require_password_change) {
+                        localStorage.setItem('agenda360_token', data.token_restrito);
+                        localStorage.setItem('agenda360_tipo_acesso', 'restrito_gestor');
+                        window.location.href = '/gestao.html';
+                    } else {
+                        localStorage.setItem('agenda360_token', data.token);
+                        localStorage.setItem('agenda360_agencia_id', data.agencia_id);
+                        localStorage.setItem('agenda360_agencia_nome', data.nome_agencia);
+                        localStorage.setItem('agenda360_tipo_acesso', data.tipo_acesso);
+                        if(data.unidade_id) localStorage.setItem('agenda360_unidade_id', data.unidade_id);
+                        window.location.href = '/gestao.html';
+                    }
+                } else {
+                    alert('⚠️ ' + data.erro);
+                }
+            } catch (err) { alert('Erro ao contactar o servidor.'); }
+            
+            btn.innerText = "Entrar no Painel"; btn.disabled = false;
+        }
+
+        async function loginMaster(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnMaster');
+            const senha = document.getElementById('senhaMaster').value;
+            
+            btn.innerText = "A verificar..."; btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/master/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ senha })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // CORREÇÃO: Usar o sessionStorage e os nomes exatos que o master.html exige
+                    sessionStorage.setItem('agenda360_master_token', data.token);
+                    sessionStorage.setItem('master_logado', 'true');
+                    
+                    window.location.href = '/master.html';
+                } else {
+                    alert('⚠️ ' + data.erro);
+                }
+            } catch (err) { alert('Erro ao contactar o servidor.'); }
+            
+            btn.innerText = "Acesso Master"; btn.disabled = false;
+        }
+
+        function abrirModalRecuperacao() { document.getElementById('modalRecuperacao').style.display = 'flex'; }
+        
+        function fecharModalRecuperacao() { 
+            document.getElementById('modalRecuperacao').style.display = 'none'; 
+            document.getElementById('pinSeguranca').value = '';
+            document.getElementById('novaSenhaRecuperacao').value = '';
+        }
+
+        async function recuperarSenhaMaster(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnRecuperar');
+            const pin = document.getElementById('pinSeguranca').value;
+            const novaSenha = document.getElementById('novaSenhaRecuperacao').value;
+            
+            btn.innerText = "A redefinir..."; btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/master/recuperar-senha', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin_seguranca: pin, nova_senha: novaSenha })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    alert("✅ " + data.mensagem);
+                    fecharModalRecuperacao();
+                    document.getElementById('senhaMaster').value = novaSenha;
+                } else {
+                    alert('❌ ' + data.erro);
+                }
+            } catch(err) { alert('Erro ao contactar o servidor.'); }
+            
+            btn.innerText = "Redefinir e Entrar"; btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
