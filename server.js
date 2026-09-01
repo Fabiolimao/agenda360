@@ -246,6 +246,7 @@ const pool = new Pool({
     database: process.env.DB_NAME || 'agenda360',
     password: process.env.DB_PASSWORD || 'admin123', 
     port: process.env.DB_PORT || 5432,
+    ssl: true
 });
 
 pool.on('error', (err) => { console.error('❌ Erro crítico no PostgreSQL:', err); });
@@ -301,6 +302,9 @@ async function criarTabelas() {
         try { await pool.query(`ALTER TABLE funcionarios ADD COLUMN disponibilidade TEXT`); } catch(e) { }
         try { await pool.query(`ALTER TABLE funcionarios ADD COLUMN data_inativacao TEXT DEFAULT NULL`); } catch(e) { } 
 
+        // ORDEM CORRIGIDA: solicitacoes_extra é criada antes das escalas
+        await pool.query(`CREATE TABLE IF NOT EXISTS solicitacoes_extra (id SERIAL PRIMARY KEY, agencia_id INTEGER REFERENCES agencias(id) ON DELETE CASCADE, unidade_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE, funcao TEXT, data_inicio TEXT, hora_entrada TEXT, hora_saida TEXT, quantidade INTEGER, tem_pausa INTEGER DEFAULT 0, minutos_pausa INTEGER DEFAULT 0, status TEXT DEFAULT 'Pendente', data_pedido TEXT)`);
+
         await pool.query(`CREATE TABLE IF NOT EXISTS escalas (id SERIAL PRIMARY KEY, unidade_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE, funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE CASCADE, funcao VARCHAR(255), data_inicio DATE, hora_entrada TIME, data_fim DATE, hora_saida TIME, tem_pausa INTEGER DEFAULT 0, timestamp_inicio_pausa TIMESTAMPTZ DEFAULT NULL, timestamp_fim_pausa TIMESTAMPTZ DEFAULT NULL, enviar_sms INTEGER DEFAULT 0, checkin_real VARCHAR(50) DEFAULT NULL, checkout_real VARCHAR(50) DEFAULT NULL, status_turno VARCHAR(50) DEFAULT 'Agendado', controlo_gps TEXT DEFAULT 'Não verificado', solicitacao_id INTEGER REFERENCES solicitacoes_extra(id) ON DELETE SET NULL, validado_cliente INTEGER DEFAULT 0, obs_cliente TEXT DEFAULT NULL, horas_normais NUMERIC(5,2) DEFAULT 0.00, horas_noturnas NUMERIC(5,2) DEFAULT 0.00, horas_extras NUMERIC(5,2) DEFAULT 0.00, tipo_ausencia VARCHAR(50) DEFAULT NULL)`);
         
         try { await pool.query(`ALTER TABLE escalas ADD COLUMN status_turno VARCHAR(50) DEFAULT 'Agendado'`); } catch(e) { }
@@ -320,7 +324,6 @@ async function criarTabelas() {
         try { await pool.query(`ALTER TABLE assinaturas_mensais ADD COLUMN unidade_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE`); } catch(e) { }
         try { await pool.query(`ALTER TABLE assinaturas_mensais ADD COLUMN caminho_pdf TEXT DEFAULT NULL`); } catch(e) { }
 
-        await pool.query(`CREATE TABLE IF NOT EXISTS solicitacoes_extra (id SERIAL PRIMARY KEY, agencia_id INTEGER REFERENCES agencias(id) ON DELETE CASCADE, unidade_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE, funcao TEXT, data_inicio TEXT, hora_entrada TEXT, hora_saida TEXT, quantidade INTEGER, tem_pausa INTEGER DEFAULT 0, minutos_pausa INTEGER DEFAULT 0, status TEXT DEFAULT 'Pendente', data_pedido TEXT)`);
         await pool.query(`CREATE TABLE IF NOT EXISTS tokens_revogados (token TEXT PRIMARY KEY, data_bloqueio TEXT)`);
         await pool.query(`CREATE TABLE IF NOT EXISTS config_master (id INTEGER PRIMARY KEY CHECK (id = 1), razao_social TEXT, nif TEXT, morada TEXT, codigo_postal TEXT, localidade TEXT, email_faturacao TEXT, iban TEXT, texto_contrato TEXT, pin_recuperacao_hash TEXT, senha_master_hash TEXT)`);
 

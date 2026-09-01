@@ -295,7 +295,7 @@
 </div>
 
 <script>
-    const authToken = localStorage.getItem('agenda360_token');
+    const authToken = sessionStorage.getItem('agenda360_token');
     if (!authToken) { 
         alert("Acesso Negado! Deve iniciar sessão através do Painel Agenda360.");
         window.location.href = '/'; 
