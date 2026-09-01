@@ -185,8 +185,8 @@
                 
                 if (res.ok) {
                     // CORREÇÃO: Usar o sessionStorage e os nomes exatos que o master.html exige
-                    sessionStorage.setItem('agenda360_master_token', data.token);
-                    sessionStorage.setItem('master_logado', 'true');
+                    localStorage.setItem('agenda360_master_token', data.token);
+                    localStorage.setItem('master_logado', 'true');
                     
                     window.location.href = '/master.html';
                 } else {
