@@ -1058,7 +1058,7 @@
     async function contactarSuporte() {
         try {
             // Tenta ir buscar o token (funciona de forma dinâmica para Agência ou Trabalhador)
-            const token = sessionStorage.getItem('agenda360_token') || sessionStorage.getItem('agenda360_master_token');
+            const token = localStorage.getItem('agenda360_token') || localStorage.getItem('agenda360_master_token');
             
             const btn = document.getElementById('btnFaleConnosco');
             const txtOriginal = btn.innerHTML;

@@ -48,21 +48,12 @@ window.sanitizarTexto = function(str) {
     return div.innerHTML;
 };
 
-// 🛡️ MIGRAÇÃO DE SEGURANÇA: Move chaves do LocalStorage (Persistente) para SessionStorage (Volátil)
-const chavesSeguranca = ['agenda360_agencia_id', 'agenda360_agencia_nome', 'agenda360_tipo_acesso', 'agenda360_unidade_id', 'agenda360_token'];
-chavesSeguranca.forEach(chave => {
-    const valorLocal = localStorage.getItem(chave);
-    if (valorLocal) {
-        sessionStorage.setItem(chave, valorLocal);
-        localStorage.removeItem(chave); // Destrói o rasto no armazenamento exposto
-    }
-});
-
-const agendaId = sessionStorage.getItem('agenda360_agencia_id');
-const agendaNome = sessionStorage.getItem('agenda360_agencia_nome');
-const tipoAcesso = sessionStorage.getItem('agenda360_tipo_acesso');
-const gestorUnidadeId = sessionStorage.getItem('agenda360_unidade_id');
-const token = sessionStorage.getItem('agenda360_token');
+// 🛡️ MIGRAÇÃO DE SEGURANÇA: Lê as chaves do LocalStorage (Persistente)
+const agendaId = localStorage.getItem('agenda360_agencia_id');
+const agendaNome = localStorage.getItem('agenda360_agencia_nome');
+const tipoAcesso = localStorage.getItem('agenda360_tipo_acesso');
+const gestorUnidadeId = localStorage.getItem('agenda360_unidade_id');
+const token = localStorage.getItem('agenda360_token');
 
 window.whatsappAtivo = true;
 window.perfilGestor = 'CORPORATIVO'; // Master por defeito
@@ -81,7 +72,7 @@ if (tipoAcesso === 'restrito_gestor') {
     window.location.href = '/';
 } else if (!tipoAcesso) {
     alert("⚠️ Atualização de Segurança Requerida!\nPor favor, atualize a página, faça login novamente.");
-    sessionStorage.clear(); localStorage.clear(); window.location.href = '/';
+    localStorage.clear(); window.location.href = '/';
 } else {
     const elNomeTop = document.getElementById('nome-agencia-topbar');
 
@@ -220,11 +211,11 @@ function navegar(idSecao, elementoMenu) {
 }
 
 async function fazerLogout() { 
-    const tkn = sessionStorage.getItem('agenda360_token'); 
+    const tkn = localStorage.getItem('agenda360_token'); 
     if (tkn) { 
         try { await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tkn } }); } catch (e) { } 
     } 
-    sessionStorage.clear(); localStorage.clear(); window.location.href = '/'; 
+    localStorage.clear(); window.location.href = '/'; 
 }
 
 function copiarLinkApp() { navigator.clipboard.writeText(window.location.origin + '/app-extra.html'); document.getElementById('msgCopia').style.display = 'block'; setTimeout(() => document.getElementById('msgCopia').style.display = 'none', 3000); }
