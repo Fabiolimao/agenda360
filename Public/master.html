@@ -521,7 +521,7 @@
             return div.innerHTML;
         };
 
-        const masterToken = sessionStorage.getItem('agenda360_master_token');
+        const masterToken = localStorage.getItem('agenda360_master_token');
         let listaGlobalAgencias = [];
         let configMasterGlobal = {};
         let dadosFaturacaoGlobal = []; // Guarda dados localmente para o Excel e Impressão
@@ -578,7 +578,7 @@ Data: ____ / ____ / ________
 A PRESTADORA: _________________________________________ ({{NOME_MASTER}})
 O CLIENTE: _________________________________________ ({{NOME_CLIENTE}})`;
 
-        if(!sessionStorage.getItem('master_logado') || !masterToken) { window.location.href = '/'; }
+        if(!localStorage.getItem('master_logado') || !masterToken) { window.location.href = '/'; }
 
         // 📍 MÁQUINA DO TEMPO: Inicializa os selects com a data atual
         window.addEventListener('DOMContentLoaded', () => {
@@ -604,12 +604,12 @@ O CLIENTE: _________________________________________ ({{NOME_CLIENTE}})`;
         }
 
         async function fazerLogout() {
-            const tkn = sessionStorage.getItem('agenda360_master_token');
+            const tkn = localStorage.getItem('agenda360_master_token');
             if (tkn) {
                 try { await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tkn } }); } catch(e) {}
             }
-            sessionStorage.removeItem('master_logado'); 
-            sessionStorage.removeItem('agenda360_master_token'); 
+            localStorage.removeItem('master_logado'); 
+            localStorage.removeItem('agenda360_master_token'); 
             window.location.href = '/'; 
         }
 
