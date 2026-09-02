@@ -255,11 +255,12 @@ tbody tr:hover { background-color: #f8fafc; }
     .topbar h1 { font-size: 1.2rem; }
     .info-agencia { font-size: 0.85rem; width: 100%; text-align: left; }
     
-    .cal-header-row { display: none; }
-    .cal-grid { grid-template-columns: 1fr !important; min-width: 100% !important; gap: 15px; }
-    .cal-day.empty-pad { display: none !important; }
-    .calendario-container { overflow-x: hidden; padding-bottom: 5px; }
-    .cal-day { min-height: auto; padding: 20px; }
+    /* 📍 CORREÇÃO: Calendário visível e com scroll horizontal no telemóvel */
+    .calendario-container { overflow-x: auto; padding-bottom: 15px; -webkit-overflow-scrolling: touch; }
+    .cal-header-row { display: grid !important; min-width: 700px; }
+    .cal-grid { grid-template-columns: repeat(7, 1fr) !important; min-width: 700px !important; gap: 6px !important; }
+    .cal-day.empty-pad { display: block !important; }
+    .cal-day { min-height: 80px; padding: 8px; }
 
     /* Transformar Tabela em Lista Mobile */
     table, thead, tbody, th, td, tr { display: block; }
