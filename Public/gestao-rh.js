@@ -446,38 +446,46 @@ function cancelarEdicaoFunc() {
 document.getElementById('formFuncionario').addEventListener('submit', async (e) => {
     e.preventDefault();
     const idEdit = document.getElementById('fIdEdit').value;
-    const senha = document.getElementById('fSenha').value;
-    const nifDigitado = document.getElementById('fNif').value;
+    const senhaRaw = document.getElementById('fSenha').value;
+    const nifRaw = document.getElementById('fNif').value;
 
-    if (!idEdit && !senha && !nifDigitado) return alert('É obrigatório definir o NIF ou uma Senha provisória inicial.');
-    if (senha && senha.length < 6) return alert('A senha do trabalhador deve ter no mínimo 6 caracteres ou dígitos.');
+    const senhaLimpa = senhaRaw.trim();
+    // Remove espaços a mais do NIF por segurança para garantir que o login não falhe
+    const nifLimpo = nifRaw.trim().replace(/\s+/g, ''); 
+
+    if (!idEdit && !senhaLimpa && !nifLimpo) return alert('É obrigatório definir o NIF ou uma Senha provisória inicial.');
+    if (senhaLimpa && senhaLimpa.length < 6) return alert('A senha do trabalhador deve ter no mínimo 6 caracteres ou dígitos.');
 
     const checkedFuncoes = document.querySelectorAll('#containerFuncoesFunc input[type="checkbox"]:checked');
     const checkedDisponibilidade = document.querySelectorAll('#matrizDisponibilidade input[type="checkbox"]:checked');
     const dispValores = Array.from(checkedDisponibilidade).map(c => c.value);
-    const cidadeVal = document.getElementById('fCidade') ? document.getElementById('fCidade').value : '';
+    const cidadeVal = document.getElementById('fCidade') ? document.getElementById('fCidade').value.trim() : '';
 
     const dados = {
         agencia_id: agendaId,
-        nome_completo: document.getElementById('fNome').value,
-        email: document.getElementById('fEmail').value,
-        telemovel: document.getElementById('fTel').value,
-        nif: nifDigitado,
-        nacionalidade: document.getElementById('fNac').value,
-        idiomas: document.getElementById('fIdiomas').value,
+        nome_completo: document.getElementById('fNome').value.trim(),
+        email: document.getElementById('fEmail').value.trim(),
+        telemovel: document.getElementById('fTel').value.trim(),
+        nif: nifLimpo,
+        nacionalidade: document.getElementById('fNac').value.trim(),
+        idiomas: document.getElementById('fIdiomas').value.trim(),
         cidade: cidadeVal,
-        senha: senha,
+        senha: senhaLimpa,
         funcoes_habilitadas: Array.from(checkedFuncoes).map(c => c.value),
         disponibilidade: dispValores
     };
 
     const toggleFunc = document.getElementById('toggleEditaSenhaFunc');
     if (idEdit) {
-        // Se está a editar e o cadeado estiver desligado, apaga a senha do pacote
-        if (toggleFunc && !toggleFunc.checked) delete dados.senha;
+        // Se está a editar e o cadeado estiver desligado (ou senha vazia), apaga a senha do pacote
+        if ((toggleFunc && !toggleFunc.checked) || !dados.senha) {
+            delete dados.senha;
+        }
     } else {
-        // Se está a criar novo e a caixa ficou vazia, força a senha a ser o NIF
-        if (!senha) dados.senha = nifDigitado;
+        // Se está a criar novo e a caixa ficou vazia ou o cadeado desligado, força a senha a ser o NIF exato
+        if (!dados.senha || (toggleFunc && !toggleFunc.checked)) {
+            dados.senha = nifLimpo;
+        }
     }
 
     const res = await fetch(idEdit ? `/api/funcionarios/${idEdit}` : '/api/funcionarios', { method: idEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(dados) });
@@ -604,14 +612,14 @@ function cancelarEdicaoGestor() {
 document.getElementById('formGestor').addEventListener('submit', async (e) => {
     e.preventDefault();
     const idEdit = document.getElementById('gIdEditGestor').value;
-    const senha = document.getElementById('gSenha').value;
+    const senha = document.getElementById('gSenha').value.trim();
     if (senha && !/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(senha)) return alert('A senha não cumpre os requisitos! Mínimo de 8 caracteres, 1 Maiúscula e 1 Número.');
     const nivel = document.getElementById('gNivelAcesso') ? document.getElementById('gNivelAcesso').value : 'CORPORATIVO';
 
     const dados = {
         agencia_id: agendaId,
-        nome_gestor: document.getElementById('gNome').value,
-        email: document.getElementById('gEmail').value,
+        nome_gestor: document.getElementById('gNome').value.trim(),
+        email: document.getElementById('gEmail').value.trim(),
         senha: senha,
         unidade_id: document.getElementById('gUnidade').value,
         nivel_acesso: nivel
@@ -620,10 +628,14 @@ document.getElementById('formGestor').addEventListener('submit', async (e) => {
     const toggleGestor = document.getElementById('toggleEditaSenhaGestor');
     if (idEdit) {
         // Se estiver a editar e o cadeado estiver desligado, apaga a senha do pacote
-        if (toggleGestor && !toggleGestor.checked) delete dados.senha;
+        if ((toggleGestor && !toggleGestor.checked) || !dados.senha) {
+            delete dados.senha;
+        }
     } else {
         // Se estiver a criar novo e a caixa estiver vazia, força a senha padrão
-        if (!senha) dados.senha = 'Senha123!';
+        if (!dados.senha || (toggleGestor && !toggleGestor.checked)) {
+            dados.senha = 'Senha123!';
+        }
     }
 
     try {
