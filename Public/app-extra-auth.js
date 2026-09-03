@@ -1,7 +1,8 @@
 document.getElementById('formLogin').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('logEmail').value.trim();
-    const senha = document.getElementById('logSenha').value;
+    // 📍 BLINDAGEM: Remove espaços invisíveis deixados pelo teclado do telemóvel
+    const senha = document.getElementById('logSenha').value.trim();
     const errBox = document.getElementById('errLogin');
     const btn = document.getElementById('btnLog');
     
@@ -26,8 +27,9 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
 
 document.getElementById('formNovaSenha').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const s1 = document.getElementById('novaSenha1').value;
-    const s2 = document.getElementById('novaSenha2').value;
+    // 📍 BLINDAGEM: Evita que o trabalhador grave espaços acidentais na nova senha
+    const s1 = document.getElementById('novaSenha1').value.trim();
+    const s2 = document.getElementById('novaSenha2').value.trim();
     const errBox = document.getElementById('errSenha');
     if (s1 !== s2) { errBox.innerText = "Error: Mismatch"; errBox.style.display = 'block'; return; }
     
