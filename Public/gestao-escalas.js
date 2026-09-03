@@ -167,6 +167,12 @@ async function listarSolicitacoes() {
         let sols = await res.json(); 
         if (!Array.isArray(sols)) return; 
 
+        // 📍 PASSO 1: A GUILHOTINA (Limpa a data dos Pedidos B2B)
+        sols.forEach(s => {
+            if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
+            if (s.data_pedido) s.data_pedido = s.data_pedido.split('T')[0];
+        });
+
         // MOTOR DE AUTO-LIMPEZA: Deteta pedidos passados e muda status permanentemente
         const dataHojeStr = new Date().toISOString().slice(0, 10);
         let houveAtualizacao = false;
@@ -374,6 +380,21 @@ async function gerarCalendario() {
         ]);
         let todasEscalas = await resE.json();
         let todasSols = await resS.json();
+        
+        // 📍 PASSO 1: A GUILHOTINA (Limpa a data antes de a entregar ao Calendário)
+        if (Array.isArray(todasEscalas)) {
+            todasEscalas.forEach(e => {
+                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+            });
+        }
+        if (Array.isArray(todasSols)) {
+            todasSols.forEach(s => {
+                if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
+                if (s.data_pedido) s.data_pedido = s.data_pedido.split('T')[0];
+            });
+        }
+
         if (!Array.isArray(todasEscalas)) return;
 
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
@@ -423,6 +444,7 @@ async function gerarCalendario() {
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
 
+                // O event.stopPropagation() aqui impede que o clique no turno ative o atalho de fundo da caixa
                 blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
             });
 
@@ -582,6 +604,15 @@ async function listarEscalas() {
     try {
         const res = await fetch(`/api/escalas/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } });
         let todasAsEscalas = await res.json();
+        
+        // 📍 PASSO 1: A GUILHOTINA (Limpa a data das Escalas)
+        if (Array.isArray(todasAsEscalas)) {
+            todasAsEscalas.forEach(e => {
+                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+            });
+        }
+
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
             dadosEscalas = Array.isArray(todasAsEscalas) ? todasAsEscalas.filter(e => e.unidade_id == gestorUnidadeId) : [];
         } else {
