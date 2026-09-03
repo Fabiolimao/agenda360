@@ -17,6 +17,14 @@ async function carregarDadosServidor() {
         const data = await res.json();
         escalasTrabalhador = Array.isArray(data) ? data : (data.escalas || []);
         
+        // 📍 PASSO 1: A GUILHOTINA (Limpa a data das Escalas na App do Trabalhador)
+        if (Array.isArray(escalasTrabalhador)) {
+            escalasTrabalhador.forEach(e => {
+                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+            });
+        }
+        
         if (typeof switchTabApp === 'function') switchTabApp('tabCalendario', document.getElementById('btnTabCal'));
         if (typeof verificarAssinaturasPendentes === 'function') verificarAssinaturasPendentes(); 
     } catch (err) { console.error(err); }
@@ -180,7 +188,10 @@ async function processarVagaMagica(vagaId) {
                     <button class="btn-main" style="background:#64748b; width:100%;" onclick="fecharVagaMagica()">Ir para o meu Calendário</button>
                 </div>`;
         } else {
+            // 📍 PASSO 1: A GUILHOTINA
+            if (vaga.data_inicio) vaga.data_inicio = vaga.data_inicio.split('T')[0];
             const dataFormatada = vaga.data_inicio.split('-').reverse().join('/');
+            
             overlay.innerHTML = `
                 <div style="background:white; padding:0; border-radius:24px; box-shadow:0 15px 35px -5px rgba(0,0,0,0.15); width:100%; max-width:400px; overflow:hidden; border:2px solid var(--success-color);">
                     <div style="background:var(--success-color); color:white; padding:20px; text-align:center;">
@@ -276,6 +287,15 @@ async function processarLoteMagico(loteIds) {
         }
         
         const vagas = await res.json();
+        
+        // 📍 PASSO 1: A GUILHOTINA (Pacote de Vagas)
+        if (Array.isArray(vagas)) {
+            vagas.forEach(v => {
+                if (v.data_inicio) v.data_inicio = v.data_inicio.split('T')[0];
+                if (v.data_fim) v.data_fim = v.data_fim.split('T')[0];
+            });
+        }
+        
         const vagasDisponiveis = vagas.filter(v => v.status_turno === 'Pendente');
         
         if (vagasDisponiveis.length === 0) {
@@ -283,7 +303,7 @@ async function processarLoteMagico(loteIds) {
                 <div style="background:white; padding:30px; border-radius:24px; box-shadow:0 10px 25px rgba(0,0,0,0.1); width:100%; max-width:400px; border:2px solid var(--danger-color); text-align:center;">
                     <span style="font-size:3rem; display:block;">⚠️</span>
                     <h2 style="color:var(--danger-color); margin-top:15px; font-weight:800; letter-spacing:-1px;">PACOTE FECHADO</h2>
-                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste pacote já foram aceites por otros colegas ou cancelados pela Agência. Fica para a próxima!</p>
+                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste pacote já foram aceites por outros colegas ou cancelados pela Agência. Fica para a próxima!</p>
                     <button class="btn-main" style="background:#64748b; width:100%;" onclick="fecharVagaMagica()">Ir para o meu Calendário</button>
                 </div>`;
             return;
