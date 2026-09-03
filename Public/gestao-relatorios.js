@@ -15,6 +15,14 @@ async function carregarDropdownsRelatorios() {
         dadosRelatorios = await resData.json();
         dadosAssinaturas = await resAss.json();
 
+        // 📍 PASSO 1: A GUILHOTINA (Limpa a data na chegada aos Relatórios)
+        if (Array.isArray(dadosRelatorios)) {
+            dadosRelatorios.forEach(e => {
+                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+            });
+        }
+
         const selE = document.getElementById('repEmpresa');
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
             const u = Array.isArray(unids) ? unids.find(x => x.id == gestorUnidadeId) : null;
@@ -574,6 +582,14 @@ window.gerarEImprimirMapa = async function () {
     try {
         const res = await fetch(`/api/escalas/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } });
         let escalas = await res.json();
+
+        // 📍 PASSO 1: A GUILHOTINA (Segurança também para o Mapa Semanal)
+        if (Array.isArray(escalas)) {
+            escalas.forEach(e => {
+                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+            });
+        }
 
         if (unidadeId) {
             escalas = escalas.filter(e => e.unidade_id == unidadeId);
