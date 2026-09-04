@@ -37,11 +37,12 @@ body {
     display: none; 
     flex-direction: column; 
     height: 100vh; 
+    height: 100dvh; /* 📍 BLINDAGEM MOBILE: Garante que o menu não fica debaixo da barra do Chrome/Safari */
     width: 100%; 
     max-width: 500px; 
     background: var(--bg-color); /* Fundo Premium da App */
     position: relative; 
-    overflow-y: auto; 
+    overflow: hidden; /* 📍 BUG RESOLVIDO: O ecrã tranca. Quem faz scroll é apenas a content-area */
 }
 
 .screen.active { 
@@ -191,7 +192,7 @@ body {
 
 /* ⬇️ NAVEGAÇÃO INFERIOR */
 .bottom-nav { 
-    position: fixed; 
+    position: absolute; /* 📍 BUG RESOLVIDO: Em vez de fixed, usa absolute em relação à "screen" para nunca ser empurrado. */
     bottom: 0; 
     width: 100%; 
     max-width: 500px; 

@@ -1,6 +1,14 @@
+// ==========================================
+// MÓDULO: REGISTO DE PONTO E GPS DA APP
+// ==========================================
+
+// 📍 BLINDAGEM: Declaração global forçada para evitar perda de escopo
+window.escAtivaId = null;
+window.tipoAtivo = null;
+
 function abrirJanelaGPS(escalaId, tipo) {
-    escAtivaId = escalaId; 
-    tipoAtivo = tipo;
+    window.escAtivaId = parseInt(escalaId); 
+    window.tipoAtivo = tipo;
     const gpsNivel = parseInt(localStorage.getItem('agenda360_gps_nivel') || 2);
     
     if (gpsNivel === 3) {
@@ -48,8 +56,17 @@ function calcularDistanciaGPS(lat1, lon1, lat2, lon2) {
 }
 
 function executarPicagemGPS() {
-    const turno = escalasTrabalhador.find(x => x.id === escAtivaId);
-    if (!turno || !navigator.geolocation) return executarPicagemManual('Falha técnica de GPS');
+    // 📍 BLINDAGEM: Garante a comparação correta convertendo ambos para texto
+    const turno = escalasTrabalhador.find(x => String(x.id) === String(window.escAtivaId));
+    
+    if (!turno) {
+        alert("⚠️ Erro interno: O turno não foi localizado no seu telemóvel.");
+        return;
+    }
+    
+    if (!navigator.geolocation) {
+        return executarPicagemManual('Falha técnica de GPS');
+    }
     
     const gpsNivel = parseInt(localStorage.getItem('agenda360_gps_nivel') || 2);
 
@@ -85,15 +102,29 @@ function executarPicagemManual(motivo) { processarPontoServidor(motivo); }
 async function processarPontoServidor(stringGps) {
     const token = localStorage.getItem('agenda360_func_token');
     
+    if (!window.escAtivaId) {
+        alert("⚠️ Falha crítica: O ID do turno perdeu-se na memória. Por favor, recarregue a página.");
+        return;
+    }
+
     try {
         const res = await fetch('/api/escalas/ponto', {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify({ 
-                escala_id: escAtivaId, 
-                tipo: tipoAtivo, 
+                id: window.escAtivaId, // Proteção extra (alguns backends usam 'id')
+                escala_id: window.escAtivaId, // Proteção extra (outros usam 'escala_id')
+                tipo: window.tipoAtivo, 
                 controlo_gps: stringGps
             })
         });
-        if (res.ok) { carregarDadosServidor(); } else { const dErro = await res.json(); alert('⚠️ ' + (dErro.erro || 'Erro no processamento do ponto.')); }
-    } catch (err) {}
+        if (res.ok) { 
+            carregarDadosServidor(); 
+            alert('✅ Ponto registado com sucesso!');
+        } else { 
+            const dErro = await res.json(); 
+            alert('⚠️ ' + (dErro.erro || 'Erro no processamento do ponto no servidor.')); 
+        }
+    } catch (err) {
+        alert('⚠️ Erro de comunicação com o servidor.');
+    }
 }

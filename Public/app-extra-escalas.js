@@ -116,10 +116,10 @@ function renderTurnosHome() {
         
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
             statusClass = 'falta';
-            btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">${e.status_turno === 'Falta' ? dic[curLang]['js_missed'] : dic[curLang]['js_canc']}</div>`;
+            btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">${e.status_turno === 'Falta' ? (dic[curLang]['js_missed'] || 'Falta') : (dic[curLang]['js_canc'] || 'Cancelado')}</div>`;
         } else if (e.status_turno === 'Concluído' || e.status_turno === 'A Aguardar Validação') {
             statusClass = 'concluido';
-            btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--success-color); margin-top:10px;">${dic[curLang]['js_done']}</div>`;
+            btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--success-color); margin-top:10px;">${dic[curLang]['js_done'] || 'Concluído'}</div>`;
         } else if (e.checkin_real && !e.checkout_real) {
             statusClass = 'curso';
             let botoesPausaHTML = '';
@@ -128,7 +128,7 @@ function renderTurnosHome() {
             } else if (e.timestamp_inicio_pausa && !e.timestamp_fim_pausa) {
                 botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
             }
-            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out']}</button>`;
+            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
             const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
@@ -137,11 +137,23 @@ function renderTurnosHome() {
             const diffMinutos = (dataTurnoObjeto - agora) / (1000 * 60);
 
             if (diffMinutos > 15) {
-                btnHTML = `<button class="btn-point" disabled style="background:#cbd5e1; color:#94a3b8;">${dic[curLang]['js_locked']}</button>`;
-            } else if (diffMinutos < -1440) {
-                btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">${dic[curLang]['js_expired']}</div>`;
+                btnHTML = `<button class="btn-point" disabled style="background:#cbd5e1; color:#94a3b8;">${dic[curLang]['js_locked'] || 'Bloqueado'}</button>`;
+            } else if (diffMinutos < -120) {
+                // 📍 BUG 3 RESOLVIDO: Passaram 2 horas e não picou a entrada -> Falta Automática
+                statusClass = 'falta';
+                btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">Falta (Expirado)</div>`;
+                
+                if(e.status_turno !== 'Falta') {
+                    const token = localStorage.getItem('agenda360_func_token');
+                    fetch(`/api/escalas/${e.id}`, { 
+                        method: 'PUT', 
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
+                        body: JSON.stringify({ status_turno: 'Falta' }) 
+                    }).catch(()=>{});
+                    e.status_turno = 'Falta'; 
+                }
             } else {
-                btnHTML = `<button class="btn-point btn-in" onclick="abrirJanelaGPS(${e.id}, 'entrada')">${dic[curLang]['js_btn_in']}</button>`;
+                btnHTML = `<button class="btn-point btn-in" onclick="abrirJanelaGPS(${e.id}, 'entrada')">${dic[curLang]['js_btn_in'] || 'Picar Entrada'}</button>`;
             }
         }
 
@@ -411,7 +423,7 @@ function fecharVagaMagica() {
 }
 
 const tokenAtivoLocal = localStorage.getItem('agenda360_func_token');
-const urlVaga = newSearchParams(window.location.search).get('vaga');
+const urlVaga = new URLSearchParams(window.location.search).get('vaga');
 const urlLote = new URLSearchParams(window.location.search).get('lote');
 
 if (tokenAtivoLocal) {
