@@ -40,7 +40,7 @@ body {
 /* O "Telemóvel" Virtual */
 .screen { 
     display: none; 
-    flex-direction: column; 
+    flex-direction: column; /* 📍 ESTRUTURA FLEX NATIVA */
     height: 100%; 
     width: 100%; 
     max-width: 500px; 
@@ -162,26 +162,21 @@ body {
     justify-content: space-between; 
     align-items: flex-start; 
     box-shadow: 0 10px 25px -5px rgba(0, 70, 139, 0.3); 
-    position: sticky; 
-    top: 0; 
+    flex-shrink: 0; /* Impede a barra de esmagar */
     z-index: 100; 
-    flex-shrink: 0;
 }
 .topbar h1 { font-size: 1.4rem; margin: 0 0 5px 0; font-weight: 800; letter-spacing: -0.5px; }
 
 /* 📍 A ZONA QUE ROLA (SCROLL) */
 .content-area { 
-    flex: 1; 
+    flex: 1; /* Preenche todo o espaço no meio */
     padding: 20px; 
     overflow-y: auto; /* O scroll funciona APENAS aqui dentro */
-    padding-bottom: 110px; /* Garante que o último turno não fica tapado pelo menu */
 }
 
-/* ⬇️ O MENU FIXO NO FUNDO */
+/* ⬇️ O MENU FIXO NO FUNDO (Native Flex Layout) */
 .bottom-nav { 
-    position: absolute; /* Crava o menu na base do ecrã trancado */
-    bottom: 0; 
-    left: 0;
+    position: relative; /* Não flutua! Fica encaixado no fluxo do telemóvel */
     width: 100%; 
     background: rgba(255, 255, 255, 0.95); 
     backdrop-filter: blur(10px); 
@@ -189,10 +184,11 @@ body {
     display: flex; 
     justify-content: space-around; 
     padding: 15px 0; 
-    padding-bottom: env(safe-area-inset-bottom, 15px); /* Espaço seguro para o iPhone */
+    padding-bottom: env(safe-area-inset-bottom, 15px); 
     z-index: 1000; 
     box-shadow: 0 -10px 25px rgba(15, 23, 42, 0.05); 
     border-radius: 24px 24px 0 0;
+    flex-shrink: 0; /* Garante que o menu nunca é esmagado */
 }
 .nav-item { background: none; border: none; flex: 1; display: flex; flex-direction: column; align-items: center; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 .nav-item.active { color: var(--primary-color); transform: translateY(-3px); }

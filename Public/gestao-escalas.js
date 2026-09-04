@@ -377,12 +377,37 @@ async function gerarCalendario() {
         let todasEscalas = await resE.json();
         let todasSols = await resS.json();
         
+        const agora = new Date();
+
         if (Array.isArray(todasEscalas)) {
             todasEscalas.forEach(e => {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
                 if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+
+                // 📍 MOTOR DE AUTO-LIMPEZA DO GESTOR (Visível Imediatamente no Calendário)
+                if (e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno) {
+                    if (e.data_inicio && e.hora_entrada) {
+                        const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
+                        const [horaT, minT] = e.hora_entrada.split(':').map(Number);
+                        const dataTurnoObjeto = new Date(anoT, mesT - 1, diaT, horaT, minT);
+                        const diffMinutos = (dataTurnoObjeto - agora) / (1000 * 60);
+                        
+                        if (diffMinutos < -120) {
+                            const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
+                            e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
+                            try {
+                                fetch(`/api/escalas/${e.id}`, { 
+                                    method: 'PUT', 
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
+                                    body: JSON.stringify({ status_turno: e.status_turno }) 
+                                }).catch(()=>{});
+                            } catch(err){}
+                        }
+                    }
+                }
             });
         }
+
         if (Array.isArray(todasSols)) {
             todasSols.forEach(s => {
                 if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
@@ -617,7 +642,6 @@ async function listarEscalas() {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
                 if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
                 
-                // 📍 MOTOR DE AUTO-LIMPEZA DO GESTOR (Altera o status automaticamente se passou mais de 2h)
                 if (e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno) {
                     if (e.data_inicio && e.hora_entrada) {
                         const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
@@ -628,8 +652,6 @@ async function listarEscalas() {
                         if (diffMinutos < -120) {
                             const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
                             e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
-                            
-                            // Força a alteração discreta na BD para garantir integridade financeira
                             try {
                                 fetch(`/api/escalas/${e.id}`, { 
                                     method: 'PUT', 
@@ -1128,9 +1150,9 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             }
         }
     } catch (err) { alert("Erro de comunicação com o servidor."); }
-    btn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
     btn.disabled = false;
-});
+});tn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
+    b
 
 async function apagarEscala(id) { 
     if (confirm("Tem a certeza que deseja apagar/cancelar este turno?")) { 
