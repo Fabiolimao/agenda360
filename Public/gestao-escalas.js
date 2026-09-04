@@ -867,11 +867,19 @@ function editarEscala(id) {
         document.getElementById('escMinutos').value = p;
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
+        
+        // 📍 BLINDAGEM: Extrair as horas (HH:MM) diretamente do texto para evitar fusos horários
+        const extrairHHMM = (valor) => {
+            if (!valor) return '';
+            if (valor.includes('T')) return valor.split('T')[1].substring(0, 5);
+            return String(valor).substring(0, 5);
+        };
+
         if (inInput) {
-            inInput.value = e.timestamp_inicio_pausa ? new Date(e.timestamp_inicio_pausa).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
+            inInput.value = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa) || '';
         }
         if (fimInput) {
-            fimInput.value = e.timestamp_fim_pausa ? new Date(e.timestamp_fim_pausa).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
+            fimInput.value = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa) || '';
         }
     } else {
         document.getElementById('escPausa').checked = false;
