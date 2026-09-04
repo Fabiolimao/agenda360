@@ -94,14 +94,23 @@ function renderTurnosHome() {
     listagem.forEach(e => {
         let btnHTML = ''; let statusClass = 'agendado';
 
+        // 📍 BLINDAGEM MÁXIMA DE FUSO HORÁRIO PARA A APP
+        const extrairHHMM = (valor) => {
+            if (!valor) return '';
+            const vStr = String(valor);
+            if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
+            if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
+            return vStr.substring(0, 5);
+        };
+
         let txtPausaCard = '';
         if (e.timestamp_inicio_pausa && e.timestamp_fim_pausa) {
-            const hI = new Date(e.timestamp_inicio_pausa).toLocaleTimeString('pt-PT', {hour:'2-digit', minute:'2-digit'});
-            const hF = new Date(e.timestamp_fim_pausa).toLocaleTimeString('pt-PT', {hour:'2-digit', minute:'2-digit'});
+            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
+            const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
             const pReal = e.minutos_pausa_realizados || '-';
             txtPausaCard = `<div class="shift-detail" style="color:#166534; font-weight:bold; margin-top:4px; background:#f0fdf4; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Pausa: ${hI} - ${hF} (${pReal} min)</div>`;
         } else if (e.timestamp_inicio_pausa && !e.timestamp_fim_pausa) {
-            const hI = new Date(e.timestamp_inicio_pausa).toLocaleTimeString('pt-PT', {hour:'2-digit', minute:'2-digit'});
+            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
             txtPausaCard = `<div class="shift-detail" style="color:#b45309; font-weight:bold; margin-top:4px; background:#fef3c7; padding:4px 8px; border-radius:4px; display:inline-block;">⏸️ Em Pausa (início ${hI})</div>`;
         }
         
@@ -188,7 +197,6 @@ async function processarVagaMagica(vagaId) {
                     <button class="btn-main" style="background:#64748b; width:100%;" onclick="fecharVagaMagica()">Ir para o meu Calendário</button>
                 </div>`;
         } else {
-            // 📍 PASSO 1: A GUILHOTINA
             if (vaga.data_inicio) vaga.data_inicio = vaga.data_inicio.split('T')[0];
             const dataFormatada = vaga.data_inicio.split('-').reverse().join('/');
             
@@ -288,7 +296,6 @@ async function processarLoteMagico(loteIds) {
         
         const vagas = await res.json();
         
-        // 📍 PASSO 1: A GUILHOTINA (Pacote de Vagas)
         if (Array.isArray(vagas)) {
             vagas.forEach(v => {
                 if (v.data_inicio) v.data_inicio = v.data_inicio.split('T')[0];
@@ -403,9 +410,8 @@ function fecharVagaMagica() {
     carregarDadosServidor();
 }
 
-// Lógica de arranque do URL (vagas)
 const tokenAtivoLocal = localStorage.getItem('agenda360_func_token');
-const urlVaga = new URLSearchParams(window.location.search).get('vaga');
+const urlVaga = newSearchParams(window.location.search).get('vaga');
 const urlLote = new URLSearchParams(window.location.search).get('lote');
 
 if (tokenAtivoLocal) {

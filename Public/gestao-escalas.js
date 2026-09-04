@@ -400,7 +400,14 @@ async function gerarCalendario() {
             dadosSolicitacoes = Array.isArray(todasSols) ? todasSols : [];
         }
 
-        const scales = dadosEscalas.filter(e => (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
+        // 📍 FILTRO NOVO: Esconde os "Cancelados" e "Não efetivados" da vista do calendário
+        const scales = dadosEscalas.filter(e => 
+            (funcId ? e.funcionario_id == funcId : true) && 
+            (unidadeId ? e.unidade_id == unidadeId : true) &&
+            e.status_turno !== 'Cancelado' &&
+            e.status_turno !== 'Agendamento Não efetivado'
+        );
+
         const dataHojeStr = new Date().toISOString().slice(0, 10);
         const sols = dadosSolicitacoes.filter(s =>
             (unidadeId ? s.unidade_id == unidadeId : true) &&
@@ -426,12 +433,12 @@ async function gerarCalendario() {
             });
 
             turnosDia.forEach(t => {
-                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && t.status_turno !== 'Agendamento Não efetivado' && t.status_turno !== 'Cancelado';
+                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
                 let cor = 'laranja';
 
                 if (isAdefinir) cor = 'laranja';
                 else if (t.status_turno === 'Concluído') cor = 'verde';
-                else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') cor = 'vermelha';
+                else if (t.status_turno === 'Falta') cor = 'vermelha';
                 else if (new Date(t.data_inicio) < new Date() && !t.checkin_real) cor = 'vermelha';
 
                 let txtNomeCurto = isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido');
@@ -464,7 +471,15 @@ window.abrirResumoDia = function (dataStr) {
     let unidadeId = document.getElementById('calUnidade').value;
     if (tipoAcesso === 'gestor') unidadeId = gestorUnidadeId;
 
-    const turnosDia = dadosEscalas.filter(e => e.data_inicio === dataStr && (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
+    // 📍 FILTRO NOVO: Esconde os "Cancelados" e "Não efetivados" do modal de resumo diário
+    const turnosDia = dadosEscalas.filter(e => 
+        e.data_inicio === dataStr && 
+        (funcId ? e.funcionario_id == funcId : true) && 
+        (unidadeId ? e.unidade_id == unidadeId : true) &&
+        e.status_turno !== 'Cancelado' &&
+        e.status_turno !== 'Agendamento Não efetivado'
+    );
+
     const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true) && s.status !== 'Cancelado' && s.status !== 'Recusado');
 
     let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
@@ -491,14 +506,13 @@ window.abrirResumoDia = function (dataStr) {
     }
 
     turnosDia.forEach(t => {
-        let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
-        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
-        let txtNome = isVagaCancelada ? '<span style="color:var(--danger-color);font-weight:bold;">❌ Vaga Não Preenchida</span>' : (isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido'));
+        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
+        let txtNome = isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido');
         let statusInfo = sanitizarTexto(t.status_turno);
         let corBorda = '#cbd5e1'; let corFundo = '#f8fafc';
 
         if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
-        else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
+        else if (t.status_turno === 'Falta') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
         else if (t.status_turno === 'A Aguardar Validação') corBorda = 'var(--warning-color)';
         else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
         else if (isAdefinir) { corBorda = '#f59e0b'; corFundo = '#fffbeb'; }
@@ -853,7 +867,6 @@ function editarEscala(id) {
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
         
-        // 📍 BLINDAGEM MÁXIMA: Ignora conversões de fuso e corta apenas o texto (Ex: '12:00')
         const extrairLiteral = (valor) => {
             if (!valor) return '';
             const vStr = String(valor);
@@ -925,7 +938,6 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
 
     const funcEscolhido = document.getElementById('escFunc').value;
     
-    // 📍 BLINDAGEM MÁXIMA: Assegura que o servidor recebe as horas exatas no formato esperado
     const inInput = document.getElementById('escHoraInicioPausa');
     const fimInput = document.getElementById('escHoraFimPausa');
     const vInicio = (inInput && inInput.value) ? inInput.value : null;
