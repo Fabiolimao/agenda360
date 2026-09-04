@@ -868,10 +868,17 @@ function editarEscala(id) {
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
         
-        // 📍 BLINDAGEM: Extrair as horas (HH:MM) diretamente do texto para evitar fusos horários
+        // 📍 BLINDAGEM OTIMIZADA: Converte as horas UTC devolvidas pelo servidor para a hora real em Portugal
         const extrairHHMM = (valor) => {
             if (!valor) return '';
-            if (valor.includes('T')) return valor.split('T')[1].substring(0, 5);
+            // Se for um timestamp ISO recebido do servidor (ex: "2026-09-04T11:00:00.000Z")
+            if (valor.includes('T')) {
+                const dataObj = new Date(valor);
+                const h = String(dataObj.getHours()).padStart(2, '0');
+                const m = String(dataObj.getMinutes()).padStart(2, '0');
+                return `${h}:${m}`;
+            }
+            // Se já for apenas hora isolada
             return String(valor).substring(0, 5);
         };
 
@@ -941,6 +948,11 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
     btn.disabled = true;
 
     const funcEscolhido = document.getElementById('escFunc').value;
+    
+    // 📍 BLINDAGEM: Captura os valores da pausa antes de criar a baseDados para enviar sempre
+    const inInput = document.getElementById('escHoraInicioPausa');
+    const fimInput = document.getElementById('escHoraFimPausa');
+
     const baseDados = {
         unidade_id: document.getElementById('escUnidade').value,
         funcionario_id: funcEscolhido,
@@ -949,6 +961,8 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
         hora_saida: document.getElementById('escHoraOut').value,
         tem_pausa: document.getElementById('escPausa').checked ? 1 : 0,
         minutos_pausa: parseInt(document.getElementById('escMinutos').value) || 0,
+        hora_inicio_pausa: (inInput && inInput.value) ? inInput.value : null,
+        hora_fim_pausa: (fimInput && fimInput.value) ? fimInput.value : null,
         solicitacao_id: magicSolId
     };
 
@@ -959,10 +973,6 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             baseDados.checkin_real = document.getElementById('escCheckinReal').value || null;
             baseDados.checkout_real = document.getElementById('escCheckoutReal').value || null;
             baseDados.status_turno = document.getElementById('escStatus') ? document.getElementById('escStatus').value : 'Agendado';
-            const inInput = document.getElementById('escHoraInicioPausa');
-            const fimInput = document.getElementById('escHoraFimPausa');
-            if (inInput && inInput.value) baseDados.hora_inicio_pausa = inInput.value;
-            if (fimInput && fimInput.value) baseDados.hora_fim_pausa = fimInput.value;
 
             const res = await fetch(`/api/escalas/${idEdit}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(baseDados) });
             if (!res.ok) { const d = await res.json(); alert(d.erro); }
