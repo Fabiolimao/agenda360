@@ -167,13 +167,11 @@ async function listarSolicitacoes() {
         let sols = await res.json(); 
         if (!Array.isArray(sols)) return; 
 
-        // 📍 PASSO 1: A GUILHOTINA (Limpa a data dos Pedidos B2B)
         sols.forEach(s => {
             if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
             if (s.data_pedido) s.data_pedido = s.data_pedido.split('T')[0];
         });
 
-        // MOTOR DE AUTO-LIMPEZA: Deteta pedidos passados e muda status permanentemente
         const dataHojeStr = new Date().toISOString().slice(0, 10);
         let houveAtualizacao = false;
 
@@ -282,7 +280,6 @@ function cancelarMagica() {
 }
 async function verificarAlertasDashboard() { const dashAlerts = document.getElementById('boxAlertasDashboard'); if (!dashAlerts) return; try { const res = await fetch(`/api/solicitacoes/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } }); let sols = await res.json(); dashAlerts.innerHTML = ''; if (!Array.isArray(sols)) return; if (tipoAcesso !== 'gestor') { const pendentes = sols.filter(s => { const mAloc = s.alocados ? parseInt(s.alocados) : 0; return mAloc < s.quantidade && !s.status.includes('Recusado') && !s.status.includes('Cancelado') && !s.status.includes('Expirado'); }); if (pendentes.length > 0) { dashAlerts.innerHTML = `<div style="background:#fffbeb; border:2px solid var(--warning-color); padding:15px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="color:#b45309; margin:0 0 5px 0;">🔔 Alerta de Operação B2B</h3><p style="color:#78350f; margin:0;">Existem <b>${pendentes.length}</b> pedidos de clientes a aguardar alocação de equipa.</p></div><button class="btn-action" style="background:var(--warning-color); color:black;" onclick="navegar('solicitacoes', document.querySelector('#menuSolicitacoes a'))">Ver Pedidos</button></div>`; } } else { sols = sols.filter(s => s.unidade_id == gestorUnidadeId); const concluidos = sols.filter(s => { const mAloc = s.alocados ? parseInt(s.alocados) : 0; return mAloc >= s.quantidade; }); if (concluidos.length > 0) { dashAlerts.innerHTML = `<div style="background:#f0fdf4; border:2px solid var(--success-color); padding:15px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="color:#065f46; margin:0 0 5px 0;">✅ Pedidos Atendidos</h3><p style="color:#064e3b; margin:0;">Os seus pedidos recentes de equipa foram totalmente preenchidos pela Agência.</p></div><button class="btn-action" style="background:var(--success-color);" onclick="navegar('solicitacoes', document.querySelector('#menuSolicitacoes a'))">Ver Equipa</button></div>`; } } } catch (e) { } }
 
-
 // ==========================================
 // MÓDULO: CALENDÁRIO OPERACIONAL
 // ==========================================
@@ -317,7 +314,6 @@ async function carregarSelectsCalendario() {
             }
         }
 
-        // 📍 INJEÇÃO: Preencher os Novos Filtros Inteligentes da Tabela de Escalas
         const selFiltroFunc = document.getElementById('filtroEscFunc');
         if(selFiltroFunc) {
             selFiltroFunc.innerHTML = '<option value="ALL">👷 Todos os Trabalhadores</option><option value="A_DEFINIR" style="color:var(--warning-color); font-weight:bold;">⏳ A Definir (Vagas)</option>';
@@ -353,7 +349,7 @@ async function carregarSelectsCalendario() {
                     selFiltroCli.innerHTML += `<option value="${nome}">${sanitizarTexto(nome)}</option>`;
                 }
             } else if (selFiltroCli.parentElement) {
-                selFiltroCli.parentElement.style.display = 'none'; // Gestor local não precisa filtrar empresas
+                selFiltroCli.parentElement.style.display = 'none';
             }
         }
 
@@ -381,7 +377,6 @@ async function gerarCalendario() {
         let todasEscalas = await resE.json();
         let todasSols = await resS.json();
         
-        // 📍 PASSO 1: A GUILHOTINA (Limpa a data antes de a entregar ao Calendário)
         if (Array.isArray(todasEscalas)) {
             todasEscalas.forEach(e => {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
@@ -444,7 +439,6 @@ async function gerarCalendario() {
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
 
-                // O event.stopPropagation() aqui impede que o clique no turno ative o atalho de fundo da caixa
                 blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
             });
 
@@ -550,7 +544,6 @@ window.abrirResumoDia = function (dataStr) {
     abrirVerDetalhes(`📅 Resumo do Dia: ${dataF}`, html);
 };
 
-
 // ==========================================
 // MÓDULO: GESTÃO DE ESCALAS E TURNOS
 // ==========================================
@@ -605,7 +598,6 @@ async function listarEscalas() {
         const res = await fetch(`/api/escalas/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } });
         let todasAsEscalas = await res.json();
         
-        // 📍 PASSO 1: A GUILHOTINA (Limpa a data das Escalas)
         if (Array.isArray(todasAsEscalas)) {
             todasAsEscalas.forEach(e => {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
@@ -627,7 +619,6 @@ async function listarEscalas() {
     } catch (e) { console.error("Erro ao listar escalas", e); }
 }
 
-// 📍 GATILHO DA BARRA DE FILTROS INTELIGENTES
 window.aplicarFiltrosEscalas = function() {
     renderizarTabelaEscalas();
 };
@@ -639,14 +630,12 @@ function renderizarTabelaEscalas() {
 
     if (!Array.isArray(dadosEscalas)) return;
 
-    // 📍 1. LER OS VALORES DOS FILTROS DINÂMICOS
     const fCliente = document.getElementById('filtroEscCliente') ? document.getElementById('filtroEscCliente').value : 'ALL';
     const fUnidade = document.getElementById('filtroEscUnidade') ? document.getElementById('filtroEscUnidade').value : 'ALL';
     const fFunc = document.getElementById('filtroEscFunc') ? document.getElementById('filtroEscFunc').value : 'ALL';
 
     let escalasFiltradas = [];
 
-    // 📍 2. FILTRAR POR ABA
     if (window.abaAtivaEscalas === 'pendentes') {
         escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno);
     } else if (window.abaAtivaEscalas === 'validacao') {
@@ -656,7 +645,6 @@ function renderizarTabelaEscalas() {
         escalasFiltradas.sort((a, b) => new Date(b.data_inicio) - new Date(a.data_inicio));
     }
 
-    // 📍 3. APLICAR FILTROS DE SELEÇÃO
     escalasFiltradas = escalasFiltradas.filter(e => {
         let matchFunc = true;
         if (fFunc !== 'ALL') {
@@ -666,17 +654,14 @@ function renderizarTabelaEscalas() {
                 matchFunc = (String(e.funcionario_id) === String(fFunc));
             }
         }
-
         let matchUnid = true;
         if (fUnidade !== 'ALL') {
             matchUnid = (String(e.unidade_id) === String(fUnidade));
         }
-
         let matchCli = true;
         if (fCliente !== 'ALL') {
-            matchCli = (e.nome_empresa === fCliente); // Cruza com a empresa que vem do Join do backend
+            matchCli = (e.nome_empresa === fCliente); 
         }
-
         return matchFunc && matchUnid && matchCli;
     });
 
@@ -868,26 +853,17 @@ function editarEscala(id) {
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
         
-        // 📍 BLINDAGEM OTIMIZADA: Converte as horas UTC devolvidas pelo servidor para a hora real em Portugal
-        const extrairHHMM = (valor) => {
+        // 📍 BLINDAGEM MÁXIMA: Ignora conversões de fuso e corta apenas o texto (Ex: '12:00')
+        const extrairLiteral = (valor) => {
             if (!valor) return '';
-            // Se for um timestamp ISO recebido do servidor (ex: "2026-09-04T11:00:00.000Z")
-            if (valor.includes('T')) {
-                const dataObj = new Date(valor);
-                const h = String(dataObj.getHours()).padStart(2, '0');
-                const m = String(dataObj.getMinutes()).padStart(2, '0');
-                return `${h}:${m}`;
-            }
-            // Se já for apenas hora isolada
-            return String(valor).substring(0, 5);
+            const vStr = String(valor);
+            if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
+            if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
+            return vStr.substring(0, 5);
         };
 
-        if (inInput) {
-            inInput.value = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa) || '';
-        }
-        if (fimInput) {
-            fimInput.value = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa) || '';
-        }
+        if (inInput) inInput.value = extrairLiteral(e.timestamp_inicio_pausa) || extrairLiteral(e.hora_inicio_pausa) || '';
+        if (fimInput) fimInput.value = extrairLiteral(e.timestamp_fim_pausa) || extrairLiteral(e.hora_fim_pausa) || '';
     } else {
         document.getElementById('escPausa').checked = false;
         document.getElementById('escMinutos').value = 0;
@@ -949,9 +925,11 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
 
     const funcEscolhido = document.getElementById('escFunc').value;
     
-    // 📍 BLINDAGEM: Captura os valores da pausa antes de criar a baseDados para enviar sempre
+    // 📍 BLINDAGEM MÁXIMA: Assegura que o servidor recebe as horas exatas no formato esperado
     const inInput = document.getElementById('escHoraInicioPausa');
     const fimInput = document.getElementById('escHoraFimPausa');
+    const vInicio = (inInput && inInput.value) ? inInput.value : null;
+    const vFim = (fimInput && fimInput.value) ? fimInput.value : null;
 
     const baseDados = {
         unidade_id: document.getElementById('escUnidade').value,
@@ -961,18 +939,22 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
         hora_saida: document.getElementById('escHoraOut').value,
         tem_pausa: document.getElementById('escPausa').checked ? 1 : 0,
         minutos_pausa: parseInt(document.getElementById('escMinutos').value) || 0,
-        hora_inicio_pausa: (inInput && inInput.value) ? inInput.value : null,
-        hora_fim_pausa: (fimInput && fimInput.value) ? fimInput.value : null,
+        hora_inicio_pausa: vInicio,
+        hora_fim_pausa: vFim,
         solicitacao_id: magicSolId
     };
 
     try {
         if (idEdit) {
-            baseDados.data_inicio = document.getElementById('escDataIn').value;
-            baseDados.data_fim = document.getElementById('escDataIn').value;
+            const dataTurno = document.getElementById('escDataIn').value;
+            baseDados.data_inicio = dataTurno;
+            baseDados.data_fim = dataTurno;
             baseDados.checkin_real = document.getElementById('escCheckinReal').value || null;
             baseDados.checkout_real = document.getElementById('escCheckoutReal').value || null;
             baseDados.status_turno = document.getElementById('escStatus') ? document.getElementById('escStatus').value : 'Agendado';
+            
+            baseDados.timestamp_inicio_pausa = vInicio ? `${dataTurno}T${vInicio}:00` : null;
+            baseDados.timestamp_fim_pausa = vFim ? `${dataTurno}T${vFim}:00` : null;
 
             const res = await fetch(`/api/escalas/${idEdit}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(baseDados) });
             if (!res.ok) { const d = await res.json(); alert(d.erro); }
@@ -981,8 +963,12 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             const isMultiplo = (document.getElementById('escMultiplo') && document.getElementById('escMultiplo').checked);
 
             if (!isMultiplo) {
-                baseDados.data_inicio = document.getElementById('escDataIn').value;
-                baseDados.data_fim = document.getElementById('escDataIn').value;
+                const dataTurno = document.getElementById('escDataIn').value;
+                baseDados.data_inicio = dataTurno;
+                baseDados.data_fim = dataTurno;
+                baseDados.timestamp_inicio_pausa = vInicio ? `${dataTurno}T${vInicio}:00` : null;
+                baseDados.timestamp_fim_pausa = vFim ? `${dataTurno}T${vFim}:00` : null;
+
                 const res = await fetch('/api/escalas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(baseDados) });
 
                 if (!res.ok) {
@@ -1031,7 +1017,15 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
                             }
                         }
 
-                        const payload = { ...baseDados, data_inicio: dataStr, data_fim: dataStr, solicitacao_id: targetSolId };
+                        const payload = { 
+                            ...baseDados, 
+                            data_inicio: dataStr, 
+                            data_fim: dataStr, 
+                            solicitacao_id: targetSolId,
+                            timestamp_inicio_pausa: vInicio ? `${dataStr}T${vInicio}:00` : null,
+                            timestamp_fim_pausa: vFim ? `${dataStr}T${vFim}:00` : null
+                        };
+                        
                         const res = await fetch('/api/escalas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(payload) });
 
                         if (!res.ok) {
