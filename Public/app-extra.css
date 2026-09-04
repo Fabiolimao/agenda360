@@ -3,7 +3,7 @@
 
 :root { 
     --primary-color: #00468b; 
-    --bg-color: #F0F4F8; /* O nosso novo Azul Subtil / Slate Blue */
+    --bg-color: #F0F4F8; 
     --card-bg: #FFFFFF;
     --text-color: #0f172a; 
     --text-muted: #64748b;
@@ -16,33 +16,37 @@
 
 * { 
     box-sizing: border-box; 
-    font-family: 'Outfit', system-ui, sans-serif; /* Aplicação da Nova Fonte */
+    font-family: 'Outfit', system-ui, sans-serif; 
     margin: 0; 
     padding: 0; 
     -webkit-tap-highlight-color: transparent; 
 }
 
-/* 📱 ELEGÂNCIA NO DESKTOP: O fundo global usa uma cor ligeiramente mais escura para destacar o "telemóvel" */
+/* 📱 ELEGÂNCIA E BLINDAGEM MOBILE */
 body { 
     background: #e2e8f0; 
     color: var(--text-color); 
     font-size: 16px; 
-    overflow-x: hidden; 
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    height: 100dvh; /* Força a altura exata do ecrã do telemóvel */
+    overflow: hidden; /* Impede que a página inteira fuja do sítio */
     display: flex; 
     justify-content: center; 
+    align-items: center;
 }
 
 /* O "Telemóvel" Virtual */
 .screen { 
     display: none; 
     flex-direction: column; 
-    height: 100vh; 
-    height: 100dvh; /* 📍 BLINDAGEM MOBILE: Garante que o menu não fica debaixo da barra do Chrome/Safari */
+    height: 100%; 
     width: 100%; 
     max-width: 500px; 
-    background: var(--bg-color); /* Fundo Premium da App */
+    background: var(--bg-color); 
     position: relative; 
-    overflow: hidden; /* 📍 BUG RESOLVIDO: O ecrã tranca. Quem faz scroll é apenas a content-area */
+    overflow: hidden; /* Tranca o ecrã, só o conteúdo interior vai rolar */
 }
 
 .screen.active { 
@@ -55,33 +59,28 @@ body {
     to { opacity: 1; transform: translateY(0); } 
 }
 
-/* 💻 BÓNUS DESKTOP: Se o ecrã for largo, a App ganha forma de iPhone físico */
 @media (min-width: 501px) {
     .screen {
         height: 94vh;
-        margin-top: 3vh;
         border-radius: 35px;
         border: 8px solid #ffffff;
         box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
-        overflow: hidden;
     }
 }
 
-/* 🚪 CAIXAS DE LOGIN E AUTENTICAÇÃO */
 .auth-box { 
     margin: auto; 
     padding: 40px 30px; 
     width: 90%; 
     max-width: 400px; 
     background: var(--card-bg); 
-    border-radius: 24px; /* Cantos mais suaves */
-    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.08); /* Sombra difusa e elegante */
+    border-radius: 24px; 
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.08); 
     text-align: center; 
 }
 .auth-box img { max-height: 70px; border-radius: 12px; margin-bottom: 20px; }
 .auth-box h2 { color: var(--primary-color); font-size: 1.5rem; margin-bottom: 25px; font-weight: 800; letter-spacing: -0.5px; }
 
-/* 📝 FORMULÁRIOS PREMIUM */
 .form-group { text-align: left; margin-bottom: 20px; }
 .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-color); padding-left: 4px; }
 .form-group input, .form-group select { 
@@ -90,12 +89,11 @@ body {
     border: 1.5px solid var(--border-soft); 
     border-radius: 16px; 
     font-size: 1rem; 
-    background: var(--bg-color); /* Fundo Gelo */
+    background: var(--bg-color); 
     color: var(--text-color);
     outline: none; 
     transition: all 0.3s ease; 
 }
-/* O Efeito "Brilho" ao Clicar */
 .form-group input:focus, .form-group select:focus { 
     border-color: var(--primary-color); 
     background: var(--card-bg);
@@ -106,7 +104,6 @@ body {
 .password-wrapper input { padding-right: 45px; }
 .toggle-pwd { position: absolute; right: 15px; background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 0; color: var(--text-muted); }
 
-/* 🖱️ BOTÕES MODERNOS */
 .btn-main { 
     width: 100%; 
     padding: 16px; 
@@ -118,7 +115,7 @@ body {
     font-size: 1.05rem; 
     cursor: pointer; 
     margin-top: 10px; 
-    box-shadow: 0 10px 20px -5px rgba(0, 70, 139, 0.3); /* Elevação da cor */
+    box-shadow: 0 10px 20px -5px rgba(0, 70, 139, 0.3); 
     transition: all 0.2s ease; 
 }
 .btn-main:hover { transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(0, 70, 139, 0.4); }
@@ -129,12 +126,10 @@ body {
 
 .error-msg { color: var(--danger-color); background: #fef2f2; padding: 12px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; margin-top: 15px; display: none; border: 1px dashed #fca5a5; }
 
-/* 🌍 SELETOR DE IDIOMAS (Login) */
 .lang-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; }
 .lang-badge { padding: 6px 14px; font-size: 0.85rem; font-weight: 700; border-radius: 20px; background: var(--bg-color); color: var(--text-muted); cursor: pointer; transition: all 0.2s; border: none; }
 .lang-badge.active { background: var(--text-color); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
-/* 🌍 NOVO: MENU FLUTUANTE DE IDIOMAS (App Interna) */
 .menu-idiomas-flutuante {
     position: absolute;
     top: 70px;
@@ -142,38 +137,22 @@ body {
     background: var(--card-bg);
     border-radius: 16px;
     box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.2);
-    display: none; /* Controlado por JS */
+    display: none;
     flex-direction: column;
     overflow: hidden;
     z-index: 2000;
     min-width: 140px;
 }
-.menu-idiomas-flutuante.active {
-    display: flex;
-    animation: fadeIn 0.2s ease-out;
-}
+.menu-idiomas-flutuante.active { display: flex; animation: fadeIn 0.2s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-.idioma-btn {
-    padding: 14px 20px;
-    border: none;
-    background: none;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: var(--text-color);
-    cursor: pointer;
-    transition: background 0.2s;
-    border-bottom: 1px solid var(--border-soft);
-}
+.idioma-btn { padding: 14px 20px; border: none; background: none; text-align: left; font-weight: 600; font-size: 0.95rem; color: var(--text-color); cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-soft); }
 .idioma-btn:last-child { border-bottom: none; }
 .idioma-btn:hover { background: var(--bg-color); color: var(--primary-color); }
 
-/* 🏢 SELEÇÃO DE PERFIS */
 .btn-profile { width: 100%; padding: 18px; background: var(--card-bg); border: none; border-radius: 16px; margin-bottom: 12px; font-size: 1.05rem; font-weight: 700; color: var(--text-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04); transition: all 0.2s; }
 .btn-profile:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); color: var(--primary-color); }
 
-/* 🔝 BARRA SUPERIOR */
 .topbar { 
     background: var(--primary-color); 
     color: white; 
@@ -186,24 +165,32 @@ body {
     position: sticky; 
     top: 0; 
     z-index: 100; 
+    flex-shrink: 0;
 }
 .topbar h1 { font-size: 1.4rem; margin: 0 0 5px 0; font-weight: 800; letter-spacing: -0.5px; }
-.content-area { flex: 1; padding: 20px; overflow-y: auto; padding-bottom: 100px; }
 
-/* ⬇️ NAVEGAÇÃO INFERIOR */
+/* 📍 A ZONA QUE ROLA (SCROLL) */
+.content-area { 
+    flex: 1; 
+    padding: 20px; 
+    overflow-y: auto; /* O scroll funciona APENAS aqui dentro */
+    padding-bottom: 110px; /* Garante que o último turno não fica tapado pelo menu */
+}
+
+/* ⬇️ O MENU FIXO NO FUNDO */
 .bottom-nav { 
-    position: absolute; /* 📍 BUG RESOLVIDO: Em vez de fixed, usa absolute em relação à "screen" para nunca ser empurrado. */
+    position: absolute; /* Crava o menu na base do ecrã trancado */
     bottom: 0; 
+    left: 0;
     width: 100%; 
-    max-width: 500px; 
-    background: rgba(255, 255, 255, 0.9); 
-    backdrop-filter: blur(10px); /* Efeito Vidro iOS */
+    background: rgba(255, 255, 255, 0.95); 
+    backdrop-filter: blur(10px); 
     border-top: 1px solid rgba(255,255,255,0.5); 
     display: flex; 
     justify-content: space-around; 
     padding: 15px 0; 
-    padding-bottom: env(safe-area-inset-bottom, 15px); 
-    z-index: 100; 
+    padding-bottom: env(safe-area-inset-bottom, 15px); /* Espaço seguro para o iPhone */
+    z-index: 1000; 
     box-shadow: 0 -10px 25px rgba(15, 23, 42, 0.05); 
     border-radius: 24px 24px 0 0;
 }
@@ -211,7 +198,6 @@ body {
 .nav-item.active { color: var(--primary-color); transform: translateY(-3px); }
 .nav-item.active span { transform: scale(1.15); margin-bottom: 4px; }
 
-/* 📅 CALENDÁRIO E CARTÕES */
 .tab-content { display: none; animation: fadeIn 0.3s; }
 .tab-content.active { display: block; }
 
@@ -231,15 +217,7 @@ body {
 .divisor-calendario::before, .divisor-calendario::after { content: ''; flex: 1; border-bottom: 2px dashed var(--border-soft); }
 .divisor-calendario::before { margin-right: 1em; } .divisor-calendario::after { margin-left: 1em; }
 
-/* 🏷️ CARTÕES DE TURNO E RELATÓRIO */
-.shift-card { 
-    background: var(--card-bg); 
-    border-radius: 20px; 
-    padding: 24px; 
-    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); 
-    margin-bottom: 18px; 
-    border-left: 6px solid var(--border-soft); 
-}
+.shift-card { background: var(--card-bg); border-radius: 20px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); margin-bottom: 18px; border-left: 6px solid var(--border-soft); }
 .shift-card.agendado { border-left-color: var(--warning-color); }
 .shift-card.concluido { border-left-color: var(--success-color); }
 .shift-card.falta { border-left-color: var(--danger-color); }
@@ -254,17 +232,7 @@ body {
 .btn-in { background: linear-gradient(135deg, var(--success-color), #059669); }
 .btn-out { background: linear-gradient(135deg, var(--danger-color), #dc2626); }
 
-.rep-card { 
-    background: var(--card-bg); 
-    border-radius: 16px; 
-    padding: 18px; 
-    margin-bottom: 12px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    box-shadow: 0 8px 20px -5px rgba(15, 23, 42, 0.05); 
-    border: none;
-}
+.rep-card { background: var(--card-bg); border-radius: 16px; padding: 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 20px -5px rgba(15, 23, 42, 0.05); border: none; }
 .rep-info { flex: 1; }
 .rep-data { font-weight: 800; font-size: 1rem; color: var(--text-color); margin-bottom: 4px; }
 .rep-loc { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
@@ -275,7 +243,6 @@ body {
 .total-box-mini { flex: 1; background: var(--card-bg); border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
 .total-box-mini .val { font-size: 1.6rem; font-weight: 800; color: var(--primary-color); margin-top: 8px; }
 
-/* 🛡️ MODAIS LEGAIS */
 .modal-overlay-content { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
 .modal-box-legal { background: var(--card-bg); padding: 30px; border-radius: 24px; width: 90%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); }
 
@@ -284,14 +251,11 @@ body {
 .print-only { display: none; }
 #tabelaPrint { display: none; }
 
-/* 🖨️ BLINDAGEM DE IMPRESSÃO: INTACTA */
 @media print {
     .print-table-wrapper { overflow: visible !important; border: none !important; }
-
     #boxActResultado { display: block !important; overflow: visible !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
     #actContent { overflow: visible !important; }
     #boxTesteACT { display: none !important; }
-
     body { background: white; color: black; font-size: 8pt; margin: 0; padding: 0; display: block !important; }
     .screen { max-width: 100% !important; height: auto !important; box-shadow: none !important; border: none !important; display: block !important; overflow: visible !important; }
     .screen:not(#screenDashboard) { display: none !important; }
@@ -299,7 +263,6 @@ body {
     .no-print, .topbar, .bottom-nav, .shift-card, .rep-card, .cal-controls, .panel-totais { display: none !important; }
     .content-area, .tab-content { display: block !important; padding: 0 !important; margin: 0 !important; height: auto !important; overflow: visible !important; }
     .print-only { display: block; margin-bottom: 5px; border-bottom: none; padding-bottom: 0; }
-    
     #tabelaPrint { display: table !important; width: 100% !important; border-collapse: collapse !important; margin-bottom: 5px !important; font-size: 7.5pt !important; }
     #tabelaPrint thead { display: table-header-group !important; }
     #tabelaPrint tbody { display: table-row-group !important; }
@@ -308,46 +271,11 @@ body {
     #tabelaPrint th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; }
     #assinaturaPrint { display: block !important; margin-top: 5px !important; page-break-inside: avoid; }
     @page { size: portrait; margin: 0.5cm; }
-
-    /* ADICIONAL PARA CORREÇÃO DA TABELA DESAPARECENDO */
-    * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    
-    #boxActResultado, #actContent, .print-table-wrapper { 
-        overflow: visible !important; 
-        display: block !important; 
-        width: 100% !important; 
-        max-width: none !important;
-        height: auto !important;
-        position: static !important;
-    }
-    
-    #actContent div {
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        page-break-inside: auto !important;
-    }
-    
-    #actContent table {
-        width: 100% !important;
-        min-width: 0 !important; /* OVERRIDE THE 600px MIN-WIDTH */
-        border-collapse: collapse !important;
-    }
-    
-    .print-table-wrapper table {
-        min-width: 100% !important;
-        font-size: 8pt !important;
-    }
-    
-    tr {
-        page-break-inside: avoid !important;
-    }
-    
-    .print-table-wrapper th {
-        background-color: var(--primary-color) !important;
-        color: white !important;
-    }
-
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    #boxActResultado, #actContent, .print-table-wrapper { overflow: visible !important; display: block !important; width: 100% !important; max-width: none !important; height: auto !important; position: static !important; }
+    #actContent div { box-shadow: none !important; border-radius: 0 !important; page-break-inside: auto !important; }
+    #actContent table { width: 100% !important; min-width: 0 !important; border-collapse: collapse !important; }
+    .print-table-wrapper table { min-width: 100% !important; font-size: 8pt !important; }
+    tr { page-break-inside: avoid !important; }
+    .print-table-wrapper th { background-color: var(--primary-color) !important; color: white !important; }
 }
