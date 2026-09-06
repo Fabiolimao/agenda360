@@ -94,7 +94,6 @@ function renderTurnosHome() {
     listagem.forEach(e => {
         let btnHTML = ''; let statusClass = 'agendado';
 
-        // 📍 BLINDAGEM MÁXIMA DE FUSO HORÁRIO PARA A APP
         const extrairHHMM = (valor) => {
             if (!valor) return '';
             const vStr = String(valor);
@@ -139,19 +138,10 @@ function renderTurnosHome() {
             if (diffMinutos > 15) {
                 btnHTML = `<button class="btn-point" disabled style="background:#cbd5e1; color:#94a3b8;">${dic[curLang]['js_locked'] || 'Bloqueado'}</button>`;
             } else if (diffMinutos < -120) {
-                // 📍 BUG 3 RESOLVIDO: Passaram 2 horas e não picou a entrada -> Falta Automática
+                // 📍 BUG 3 E ERRO 400 RESOLVIDOS: Tranca na app visualmente, sem enviar requests proibidos. O gestor fará o sync oficial.
                 statusClass = 'falta';
                 btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">Falta (Expirado)</div>`;
-                
-                if(e.status_turno !== 'Falta') {
-                    const token = localStorage.getItem('agenda360_func_token');
-                    fetch(`/api/escalas/${e.id}`, { 
-                        method: 'PUT', 
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                        body: JSON.stringify({ status_turno: 'Falta' }) 
-                    }).catch(()=>{});
-                    e.status_turno = 'Falta'; 
-                }
+                e.status_turno = 'Falta'; 
             } else {
                 btnHTML = `<button class="btn-point btn-in" onclick="abrirJanelaGPS(${e.id}, 'entrada')">${dic[curLang]['js_btn_in'] || 'Picar Entrada'}</button>`;
             }
