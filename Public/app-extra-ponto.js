@@ -2,7 +2,7 @@
 // MÓDULO: REGISTO DE PONTO E GPS DA APP
 // ==========================================
 
-// 📍 BLINDAGEM: Declaração global forçada para evitar perda de escopo
+// 📍 BLINDAGEM: Variáveis globais inquebráveis
 window.escAtivaId = null;
 window.tipoAtivo = null;
 
@@ -56,11 +56,10 @@ function calcularDistanciaGPS(lat1, lon1, lat2, lon2) {
 }
 
 function executarPicagemGPS() {
-    // 📍 BLINDAGEM: Garante a comparação correta convertendo ambos para texto
     const turno = escalasTrabalhador.find(x => String(x.id) === String(window.escAtivaId));
     
     if (!turno) {
-        alert("⚠️ Erro interno: O turno não foi localizado no seu telemóvel.");
+        alert("⚠️ Erro interno: O turno não foi localizado na memória do telemóvel.");
         return;
     }
     
@@ -101,28 +100,48 @@ function executarPicagemManual(motivo) { processarPontoServidor(motivo); }
 
 async function processarPontoServidor(stringGps) {
     const token = localStorage.getItem('agenda360_func_token');
+    const funcId = localStorage.getItem('agenda360_func_id');
     
     if (!window.escAtivaId) {
         alert("⚠️ Falha crítica: O ID do turno perdeu-se na memória. Por favor, recarregue a página.");
         return;
     }
 
+    // 📍 OMNIBUS PAYLOAD: Cobre todas as exigências possíveis do Backend num só envio
+    const payload = { 
+        escala_id: parseInt(window.escAtivaId),
+        id: parseInt(window.escAtivaId), 
+        turno_id: parseInt(window.escAtivaId),
+        funcionario_id: parseInt(funcId),
+        tipo: window.tipoAtivo, 
+        controlo_gps: stringGps
+    };
+
+    const headersObj = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+
     try {
-        const res = await fetch('/api/escalas/ponto', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-            body: JSON.stringify({ 
-                id: window.escAtivaId, // Proteção extra (alguns backends usam 'id')
-                escala_id: window.escAtivaId, // Proteção extra (outros usam 'escala_id')
-                tipo: window.tipoAtivo, 
-                controlo_gps: stringGps
-            })
-        });
+        // TENTATIVA 1: Rota Original
+        let res = await fetch('/api/escalas/ponto', { method: 'POST', headers: headersObj, body: JSON.stringify(payload) });
+        let data = await res.clone().json().catch(() => ({}));
+
+        // 📍 TENTATIVAS DE EMERGÊNCIA: Se o backend devolver erro de rota ou "Turno não encontrado", tentamos o padrão RESTful
+        if (!res.ok && (res.status === 404 || res.status === 400 || data.erro === 'Turno não encontrado.')) {
+            
+            // Alternativa A: O backend pode estar à espera do ID no link (POST)
+            let resAlt = await fetch(`/api/escalas/${window.escAtivaId}/ponto`, { method: 'POST', headers: headersObj, body: JSON.stringify(payload) });
+            if (resAlt.ok) { res = resAlt; data = await resAlt.clone().json().catch(()=>({})); }
+            else {
+                // Alternativa B: O backend pode estar a exigir um PUT (Atualização) em vez de POST
+                let resAlt2 = await fetch(`/api/escalas/${window.escAtivaId}/ponto`, { method: 'PUT', headers: headersObj, body: JSON.stringify(payload) });
+                if (resAlt2.ok) { res = resAlt2; data = await resAlt2.clone().json().catch(()=>({})); }
+            }
+        }
+
         if (res.ok) { 
             carregarDadosServidor(); 
             alert('✅ Ponto registado com sucesso!');
         } else { 
-            const dErro = await res.json(); 
-            alert('⚠️ ' + (dErro.erro || 'Erro no processamento do ponto no servidor.')); 
+            alert('⚠️ ' + (data.erro || 'O servidor recusou a picagem de ponto.')); 
         }
     } catch (err) {
         alert('⚠️ Erro de comunicação com o servidor.');
