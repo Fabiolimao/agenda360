@@ -929,54 +929,77 @@ app.delete('/api/escalas/:id', verificarTokenWeb, (req, res) => {
     }); 
 });
 
-app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => { 
+    app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => { 
     const { escala_id, tipo, controlo_gps } = req.body; 
     const horaPT = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()); 
     const txtGps = controlo_gps || 'Não verificado'; 
+    
     db.get(`SELECT e.data_inicio, e.data_fim, e.hora_entrada, e.hora_saida, e.checkin_real, e.timestamp_inicio_pausa, e.timestamp_fim_pausa, u.exige_validacao FROM escalas e JOIN unidades u ON e.unidade_id = u.id WHERE e.id = ?`, [parseInt(escala_id, 10)], (err, turno) => { 
-         if (err) {
-    console.error("🚨 ERRO FATAL DE SQL NO PONTO:", err);
-    return res.status(500).json({ erro: 'Erro na Base de Dados: ' + err.message });
-}
-if (!turno) {
-    console.error("⚠️ TURNO FANTASMA - ID:", escala_id);
-    return res.status(404).json({ erro: 'O turno não existe ou não tem uma Unidade associada.' });
-}
+        
+        // 📍 BLINDAGEM 1: Imprime a verdade absoluta no log da VPS e devolve resposta JSON correta à App
+        if (err) {
+            console.error("🚨 ERRO FATAL DE SQL NO PONTO:", err);
+            return res.status(500).json({ erro: 'Erro na Base de Dados do Servidor.' });
+        }
+        if (!turno) {
+            console.error("⚠️ TURNO FANTASMA - ID:", escala_id);
+            return res.status(404).json({ erro: 'Turno não encontrado ou Unidade inválida.' });
+        }
+
+        // 📍 BLINDAGEM 2: Conversão segura para impedir o "crash" do PostgreSQL no .split()
+        const dataInicioStr = (typeof turno.data_inicio === 'object' && turno.data_inicio !== null) 
+            ? turno.data_inicio.toISOString().split('T')[0] 
+            : String(turno.data_inicio);
+
+        const dataFimStr = (typeof turno.data_fim === 'object' && turno.data_fim !== null) 
+            ? turno.data_fim.toISOString().split('T')[0] 
+            : String(turno.data_fim || dataInicioStr);
+
         if (tipo === 'entrada') { 
             const lisboaTimeStr = new Date().toLocaleString("en-US", {timeZone: "Europe/Lisbon"}); 
             const agoraLisboa = new Date(lisboaTimeStr); 
-            let parts = turno.data_inicio.split('-'); 
-            let timeParts = turno.hora_entrada.split(':'); 
+            
+            let parts = dataInicioStr.split('-'); 
+            let timeParts = String(turno.hora_entrada).split(':'); 
             let dataTurnoObjeto = new Date(parts[0], parts[1] - 1, parts[2], timeParts[0], timeParts[1]); 
+            
             const diffMinutos = (dataTurnoObjeto - agoraLisboa) / (1000 * 60); 
-            if (diffMinutos > 15) return res.status(403).json({ erro: 'Acesso Recusado. Só pode registar a entrada 15 minutos antes da hora prevista.' }); 
+            
+            if (diffMinutos > 15) return res.status(403).json({ erro: 'Só pode registar a entrada 15 minutos antes da hora prevista.' }); 
+            
             db.run(`UPDATE escalas SET checkin_real = ?, controlo_gps = ? WHERE id = ?`, [horaPT, 'Entrada: ' + txtGps, parseInt(escala_id, 10)], errUpdate => { 
-                if(errUpdate) return handleError(res, errUpdate); 
+                if(errUpdate) return res.status(500).json({ erro: 'Falha ao atualizar base de dados.' }); 
                 res.json({ mensagem: 'Registado!' }); 
             }); 
+            
         } else if (tipo === 'inicio_pausa') {
             const agoraISO = req.body.timestamp || new Date().toISOString();
             db.run(`UPDATE escalas SET timestamp_inicio_pausa = ?, tem_pausa = 1, controlo_gps = ? WHERE id = ?`, [agoraISO, 'Pausa Início: ' + txtGps, parseInt(escala_id, 10)], errUpdate => {
-                if(errUpdate) return handleError(res, errUpdate); 
+                if(errUpdate) return res.status(500).json({ erro: 'Falha ao gravar pausa.' }); 
                 res.json({ mensagem: 'Início de pausa cronometrado!' });
             });
+            
         } else if (tipo === 'fim_pausa') {
             const agoraISO = req.body.timestamp || new Date().toISOString();
             db.run(`UPDATE escalas SET timestamp_fim_pausa = ?, controlo_gps = ? WHERE id = ?`, [agoraISO, 'Pausa Fim: ' + txtGps, parseInt(escala_id, 10)], errUpdate => {
-                if(errUpdate) return handleError(res, errUpdate); 
+                if(errUpdate) return res.status(500).json({ erro: 'Falha ao gravar término da pausa.' }); 
                 res.json({ mensagem: 'Fim de pausa cronometrado!' });
             });
+            
         } else { 
             let novoStatus = turno.exige_validacao === 1 ? 'A Aguardar Validação' : 'Concluído'; 
             let fimPausaEfetivo = turno.timestamp_fim_pausa;
+            
             if (turno.timestamp_inicio_pausa && !fimPausaEfetivo) {
                 fimPausaEfetivo = req.body.timestamp || new Date().toISOString();
             }
-            const calc = calcularDiscriminacaoHoras(turno.data_inicio, turno.checkin_real || horaPT, turno.data_fim || turno.data_inicio, horaPT, turno.timestamp_inicio_pausa, fimPausaEfetivo);
+            
+            const calc = calcularDiscriminacaoHoras(dataInicioStr, turno.checkin_real || horaPT, dataFimStr, horaPT, turno.timestamp_inicio_pausa, fimPausaEfetivo);
             let query = `UPDATE escalas SET checkout_real = ?, status_turno = ?, controlo_gps = ?, horas_normais = ?, horas_noturnas = ?, horas_extras = ?, timestamp_fim_pausa = COALESCE(timestamp_fim_pausa, ?) WHERE id = ?`; 
             let params = [horaPT, novoStatus, 'Saída: ' + txtGps, calc.horas_normais, calc.horas_noturnas, calc.horas_extras, fimPausaEfetivo, parseInt(escala_id, 10)]; 
+            
             db.run(query, params, errUpdate => { 
-                if (errUpdate) return handleError(res, errUpdate); 
+                if (errUpdate) return res.status(500).json({ erro: 'Falha ao fechar o turno.' }); 
                 res.json({ mensagem: 'Registado com sucesso!', status_final: novoStatus }); 
             }); 
         } 
