@@ -934,7 +934,14 @@ app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => {
     const horaPT = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()); 
     const txtGps = controlo_gps || 'Não verificado'; 
     db.get(`SELECT e.data_inicio, e.data_fim, e.hora_entrada, e.hora_saida, e.checkin_real, e.timestamp_inicio_pausa, e.timestamp_fim_pausa, u.exige_validacao FROM escalas e JOIN unidades u ON e.unidade_id = u.id WHERE e.id = ?`, [parseInt(escala_id, 10)], (err, turno) => { 
-        if (err || !turno) return handleError(res, err, 'Turno não encontrado.'); 
+         if (err) {
+    console.error("🚨 ERRO FATAL DE SQL NO PONTO:", err);
+    return res.status(500).json({ erro: 'Erro na Base de Dados: ' + err.message });
+}
+if (!turno) {
+    console.error("⚠️ TURNO FANTASMA - ID:", escala_id);
+    return res.status(404).json({ erro: 'O turno não existe ou não tem uma Unidade associada.' });
+}
         if (tipo === 'entrada') { 
             const lisboaTimeStr = new Date().toLocaleString("en-US", {timeZone: "Europe/Lisbon"}); 
             const agoraLisboa = new Date(lisboaTimeStr); 
