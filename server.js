@@ -208,7 +208,13 @@ if (!fs.existsSync(path.join(__dirname, 'backups'))) {
     fs.mkdirSync(path.join(__dirname, 'backups'));
 }
 
-const dominiosPermitidos = [process.env.URL_OFICIAL, 'http://localhost:3005'];
+// 📍 CORREÇÃO CORS: Inclusão obrigatória de ambas as versões do domínio para destrancar a App e o Painel
+const dominiosPermitidos = [
+    process.env.URL_OFICIAL, 
+    'https://agenda360.pt', 
+    'https://www.agenda360.pt', 
+    'http://localhost:3005'
+];
 app.use(cors({ 
     origin: function (origin, callback) {
         if (!origin || dominiosPermitidos.includes(origin)) { callback(null, true); } 
@@ -536,7 +542,6 @@ app.get('/api/master/faturacao', verificarTokenWeb, async (req, res) => {
                 } else if (f.status === 'inativo') {
                     if (f.data_inativacao) {
                         const inatMesStr = f.data_inativacao.substring(0, 7);
-                        // Converter YYYY-MM-DD para DD/MM/YYYY
                         const parts = f.data_inativacao.split('-');
                         const dataPT = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : f.data_inativacao;
 
@@ -929,7 +934,7 @@ app.delete('/api/escalas/:id', verificarTokenWeb, (req, res) => {
     }); 
 });
 
-    app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => { 
+app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => { 
     const { escala_id, tipo, controlo_gps } = req.body; 
     const horaPT = new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()); 
     const txtGps = controlo_gps || 'Não verificado'; 
