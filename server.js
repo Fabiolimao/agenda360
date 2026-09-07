@@ -210,15 +210,19 @@ if (!fs.existsSync(path.join(__dirname, 'backups'))) {
 
 // 📍 CORREÇÃO CORS: Inclusão obrigatória de ambas as versões do domínio para destrancar a App e o Painel
 const dominiosPermitidos = [
-    process.env.URL_OFICIAL, 
-    'https://agenda360.pt', 
-    'https://www.agenda360.pt', 
+    process.env.URL_OFICIAL,
+    'https://agenda360.pt',
+    'https://www.agenda360.pt',
     'http://localhost:3005'
 ];
+
 app.use(cors({ 
     origin: function (origin, callback) {
-        if (!origin || dominiosPermitidos.includes(origin)) { callback(null, true); } 
-        else { callback(new Error('Acesso Bloqueado pela Política CORS de Segurança')); }
+        if (!origin || dominiosPermitidos.includes(origin)) { 
+            callback(null, true); 
+        } else { 
+            callback(new Error('Acesso Bloqueado pela Política CORS de Segurança')); 
+        }
     }
 }));
 
