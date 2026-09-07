@@ -123,11 +123,11 @@ function renderTurnosHome() {
             statusClass = 'curso';
             let botoesPausaHTML = '';
             if (!e.timestamp_inicio_pausa) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
+                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
             } else if (e.timestamp_inicio_pausa && !e.timestamp_fim_pausa) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
+                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
             }
-            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
+            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirJanelaGPS(${e.id}, 'saida')">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
             const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
