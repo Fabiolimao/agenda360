@@ -93,6 +93,9 @@ function renderTurnosHome() {
     container.innerHTML = '';
     listagem.forEach(e => {
         let btnHTML = ''; let statusClass = 'agendado';
+        
+        // 📍 O NOVO MOTOR: Usamos o rasto deixado pelo servidor para saber a verdade absoluta
+        const gpsLog = e.controlo_gps || ''; 
 
         const extrairHHMM = (valor) => {
             if (!valor) return '';
@@ -102,7 +105,6 @@ function renderTurnosHome() {
             return vStr.substring(0, 5);
         };
 
-        // 📍 FILTRO RAIO-X PARA IGNORAR ESPAÇOS E "NULLS" DO SERVIDOR
         const isPausaReal = (val) => {
             if (!val) return false;
             const s = String(val).trim().toLowerCase();
@@ -112,17 +114,34 @@ function renderTurnosHome() {
         const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa);
         const hasFimPausa = isPausaReal(e.timestamp_fim_pausa);
 
+        // 📍 SISTEMA DE ETIQUETA VISUAL BLINDADO
         let txtPausaCard = '';
-        if (hasInicioPausa && hasFimPausa) {
-            const hI = extrairHHMM(e.timestamp_inicio_pausa);
-            const hF = extrairHHMM(e.timestamp_fim_pausa);
-            const pReal = e.minutos_pausa_realizados || '-';
-            txtPausaCard = `<div class="shift-detail" style="color:#166534; font-weight:bold; margin-top:4px; background:#f0fdf4; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Pausa: ${hI} - ${hF} (${pReal} min)</div>`;
-        } else if (hasInicioPausa && !hasFimPausa) {
-            const hI = extrairHHMM(e.timestamp_inicio_pausa);
-            txtPausaCard = `<div class="shift-detail" style="color:#b45309; font-weight:bold; margin-top:4px; background:#fef3c7; padding:4px 8px; border-radius:4px; display:inline-block;">⏸️ Em Pausa (início ${hI})</div>`;
+        if (e.checkin_real && !e.checkout_real) {
+            // Turno em curso: olhamos para a ação real efetuada
+            if (gpsLog.includes('Pausa Início:')) {
+                const hI = extrairHHMM(e.timestamp_inicio_pausa);
+                txtPausaCard = `<div class="shift-detail" style="color:#b45309; font-weight:bold; margin-top:4px; background:#fef3c7; padding:4px 8px; border-radius:4px; display:inline-block;">⏸️ Em Pausa (início ${hI})</div>`;
+            } else if (gpsLog.includes('Pausa Fim:')) {
+                const hI = extrairHHMM(e.timestamp_inicio_pausa);
+                const hF = extrairHHMM(e.timestamp_fim_pausa);
+                txtPausaCard = `<div class="shift-detail" style="color:#166534; font-weight:bold; margin-top:4px; background:#f0fdf4; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Pausa Realizada: ${hI} - ${hF}</div>`;
+            } else if (hasInicioPausa && hasFimPausa) {
+                // Pausa ainda não começou, mostra a previsão do gestor
+                const hI = extrairHHMM(e.timestamp_inicio_pausa);
+                const hF = extrairHHMM(e.timestamp_fim_pausa);
+                const pMin = e.minutos_pausa || '-';
+                txtPausaCard = `<div class="shift-detail" style="color:#475569; font-weight:bold; margin-top:4px; background:#f1f5f9; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Previsão de Pausa: ${hI} - ${hF} (${pMin} min)</div>`;
+            }
+        } else {
+            // Turno antes de começar ou já fechado
+            if (hasInicioPausa && hasFimPausa) {
+                const hI = extrairHHMM(e.timestamp_inicio_pausa);
+                const hF = extrairHHMM(e.timestamp_fim_pausa);
+                const pReal = e.minutos_pausa_realizados || e.minutos_pausa || '-';
+                txtPausaCard = `<div class="shift-detail" style="color:#166534; font-weight:bold; margin-top:4px; background:#f0fdf4; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Pausa: ${hI} - ${hF} (${pReal} min)</div>`;
+            }
         }
-        
+
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
             statusClass = 'falta';
             btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">${e.status_turno === 'Falta' ? (dic[curLang]['js_missed'] || 'Falta') : (dic[curLang]['js_canc'] || 'Cancelado')}</div>`;
@@ -133,12 +152,15 @@ function renderTurnosHome() {
             statusClass = 'curso';
             let botoesPausaHTML = '';
             
-            // Lógica dos Botões Baseada Apenas em Pausas Reais
-            if (!hasInicioPausa) {
+            // 📍 LÓGICA DE BOTÕES TOTALMENTE BLINDADA
+            if (gpsLog.includes('Entrada:')) {
+                // A última ação foi entrar = O botão da pausa TEM de aparecer
                 botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
-            } else if (hasInicioPausa && !hasFimPausa) {
+            } else if (gpsLog.includes('Pausa Início:')) {
+                // A última ação foi iniciar pausa = Aparece para terminar
                 botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
             }
+            
             btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirJanelaGPS(${e.id}, 'saida')">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
