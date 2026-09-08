@@ -102,14 +102,24 @@ function renderTurnosHome() {
             return vStr.substring(0, 5);
         };
 
+        // 📍 FILTRO RAIO-X PARA IGNORAR ESPAÇOS E "NULLS" DO SERVIDOR
+        const isPausaReal = (val) => {
+            if (!val) return false;
+            const s = String(val).trim().toLowerCase();
+            return s !== '' && s !== 'null' && s !== 'undefined';
+        };
+
+        const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa);
+        const hasFimPausa = isPausaReal(e.timestamp_fim_pausa);
+
         let txtPausaCard = '';
-        if (e.timestamp_inicio_pausa && e.timestamp_fim_pausa) {
-            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
-            const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
+        if (hasInicioPausa && hasFimPausa) {
+            const hI = extrairHHMM(e.timestamp_inicio_pausa);
+            const hF = extrairHHMM(e.timestamp_fim_pausa);
             const pReal = e.minutos_pausa_realizados || '-';
             txtPausaCard = `<div class="shift-detail" style="color:#166534; font-weight:bold; margin-top:4px; background:#f0fdf4; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Pausa: ${hI} - ${hF} (${pReal} min)</div>`;
-        } else if (e.timestamp_inicio_pausa && !e.timestamp_fim_pausa) {
-            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
+        } else if (hasInicioPausa && !hasFimPausa) {
+            const hI = extrairHHMM(e.timestamp_inicio_pausa);
             txtPausaCard = `<div class="shift-detail" style="color:#b45309; font-weight:bold; margin-top:4px; background:#fef3c7; padding:4px 8px; border-radius:4px; display:inline-block;">⏸️ Em Pausa (início ${hI})</div>`;
         }
         
@@ -122,9 +132,11 @@ function renderTurnosHome() {
         } else if (e.checkin_real && !e.checkout_real) {
             statusClass = 'curso';
             let botoesPausaHTML = '';
-            if (!e.timestamp_inicio_pausa) {
+            
+            // Lógica dos Botões Baseada Apenas em Pausas Reais
+            if (!hasInicioPausa) {
                 botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
-            } else if (e.timestamp_inicio_pausa && !e.timestamp_fim_pausa) {
+            } else if (hasInicioPausa && !hasFimPausa) {
                 botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
             }
             btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirJanelaGPS(${e.id}, 'saida')">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
@@ -138,7 +150,6 @@ function renderTurnosHome() {
             if (diffMinutos > 15) {
                 btnHTML = `<button class="btn-point" disabled style="background:#cbd5e1; color:#94a3b8;">${dic[curLang]['js_locked'] || 'Bloqueado'}</button>`;
             } else if (diffMinutos < -120) {
-                // 📍 BUG 3 E ERRO 400 RESOLVIDOS: Tranca na app visualmente, sem enviar requests proibidos. O gestor fará o sync oficial.
                 statusClass = 'falta';
                 btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">Falta (Expirado)</div>`;
                 e.status_turno = 'Falta'; 

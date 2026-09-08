@@ -976,7 +976,8 @@ app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => {
             
             if (diffMinutos > 15) return res.status(403).json({ erro: 'Só pode registar a entrada 15 minutos antes da hora prevista.' }); 
             
-            db.run(`UPDATE escalas SET checkin_real = ?, controlo_gps = ? WHERE id = ?`, [horaPT, 'Entrada: ' + txtGps, parseInt(escala_id, 10)], errUpdate => { 
+            // 📍 CORREÇÃO AQUI: Atualizamos também o status_turno para 'Em curso' na BD
+            db.run(`UPDATE escalas SET checkin_real = ?, controlo_gps = ?, status_turno = 'Em curso' WHERE id = ?`, [horaPT, 'Entrada: ' + txtGps, parseInt(escala_id, 10)], errUpdate => { 
                 if(errUpdate) return res.status(500).json({ erro: 'Falha ao atualizar base de dados.' }); 
                 res.json({ mensagem: 'Registado!' }); 
             }); 
