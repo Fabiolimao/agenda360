@@ -459,26 +459,18 @@ async function gerarCalendario() {
             turnosDia.forEach(t => {
                 let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
                 let cor = 'laranja';
-                let estiloInline = '';
 
-                // 📍 CORREÇÃO 1: Cores do Calendário (Grelha)
-                if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real)) {
-                    cor = 'azul';
-                    estiloInline = 'background: var(--info-color, #0ea5e9); color: white; border-color: #0284c7; font-weight: bold;';
-                }
-                else if (isAdefinir) cor = 'laranja';
-                else if (t.status_turno === 'Concluído' || t.status_turno === 'A Aguardar Validação') cor = 'verde';
-                else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado') cor = 'vermelha';
+                if (isAdefinir) cor = 'laranja';
+                else if (t.status_turno === 'Concluído') cor = 'verde';
+                else if (t.status_turno === 'Falta') cor = 'vermelha';
                 else if (new Date(t.data_inicio) < new Date() && !t.checkin_real) cor = 'vermelha';
 
                 let txtNomeCurto = isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido');
-                if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real)) txtNomeCurto = '⏳ ' + txtNomeCurto;
-                
                 let txt = '';
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
 
-                blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer; ${estiloInline}" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
+                blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
             });
 
             let hideMobileClass = (blocosDia.length === 0) ? 'empty-pad' : '';
@@ -539,17 +531,10 @@ window.abrirResumoDia = function (dataStr) {
     turnosDia.forEach(t => {
         let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
         let txtNome = isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido');
-        
         let statusInfo = sanitizarTexto(t.status_turno);
         let corBorda = '#cbd5e1'; let corFundo = '#f8fafc';
 
-        // 📍 CORREÇÃO 2: Destaque do Turno no Pop-up Diário
-        if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real)) { 
-            statusInfo = 'EM CURSO ⏳'; 
-            corBorda = 'var(--info-color, #0ea5e9)'; 
-            corFundo = '#f0f9ff'; 
-        }
-        else if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
+        if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
         else if (t.status_turno === 'Falta') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
         else if (t.status_turno === 'A Aguardar Validação') corBorda = 'var(--warning-color)';
         else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
@@ -711,9 +696,8 @@ function renderizarTabelaEscalas() {
 
     let escalasFiltradas = [];
 
-    // 📍 CORREÇÃO 3: Filtro garante que os "Em curso" continuam visíveis na lista de Agendados
     if (window.abaAtivaEscalas === 'pendentes') {
-        escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno || e.status_turno === 'Em curso');
+        escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno);
     } else if (window.abaAtivaEscalas === 'validacao') {
         escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'A Aguardar Validação');
     } else if (window.abaAtivaEscalas === 'historico') {
@@ -749,12 +733,8 @@ function renderizarTabelaEscalas() {
     escalasFiltradas.forEach(e => {
         let statusOriginal = sanitizarTexto(e.status_turno || 'Agendado');
         let txt = statusOriginal;
-        
-        // 📍 CORREÇÃO 4: Etiqueta "Em curso" bem destacada na Tabela
-        if (e.status_turno === 'Em curso' || (e.checkin_real && !e.checkout_real)) {
-            txt = `<span style="color:var(--info-color, #0ea5e9); font-weight:800; background:#f0f9ff; padding:4px 10px; border-radius:12px; border:1px solid #bae6fd;">EM CURSO ⏳</span>`;
-        }
-        else if (txt === 'Falta' || txt === 'Cancelado' || txt === 'Agendamento Não efetivado') txt = `<span style="color:var(--danger-color);font-weight:bold;">${txt}</span>`;
+        if (e.checkin_real && !e.checkout_real && txt !== 'Falta' && txt !== 'Cancelado' && txt !== 'Agendamento Não efetivado') txt += ' (Em curso)';
+        if (txt === 'Falta' || txt === 'Cancelado' || txt === 'Agendamento Não efetivado') txt = `<span style="color:var(--danger-color);font-weight:bold;">${txt}</span>`;
         else if (txt === 'Concluído') txt = `<span style="color:var(--success-color);font-weight:bold;">${txt}</span>`;
         else if (txt === 'A Aguardar Validação') txt = `<span style="color:var(--warning-color);font-weight:bold;">⏳ ${txt}</span>`;
         else if (txt === 'Pendente') txt = `<span style="color:var(--warning-color);font-weight:bold; background:#fffbeb; padding:2px 8px; border-radius:12px; border:1px dashed #fcd34d;">${txt}</span>`;
@@ -1170,9 +1150,9 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             }
         }
     } catch (err) { alert("Erro de comunicação com o servidor."); }
-    btn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
     btn.disabled = false;
-});
+});tn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
+    b
 
 async function apagarEscala(id) { 
     if (confirm("Tem a certeza que deseja apagar/cancelar este turno?")) { 
