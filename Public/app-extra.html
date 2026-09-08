@@ -426,13 +426,14 @@
                     </div>
                     <div class="form-group" style="flex: 3; margin: 0; min-width: 200px;">
                         <label data-i18n="rep_status">Estado do Turno</label>
-                        <select id="repFiltroStatusApp" onchange="gerarRelatorioApp()">
-                            <option value="" data-i18n="status_all">Todos os Estados</option>
-                            <option value="Concluído" data-i18n="status_done">Concluídos (Efetivos)</option>
-                            <option value="Agendado" data-i18n="status_sched">Agendados</option>
-                            <option value="Falta" data-i18n="status_missed">Faltas</option>
-                            <option value="Cancelado" data-i18n="status_canc">Cancelados</option>
-                        </select>
+                     <select id="repFiltroStatusApp" onchange="gerarRelatorioApp()">
+                        <option value="">Todos os Estados</option>
+                        <option value="Concluído">Concluídos (Efetivos)</option>
+                        <option value="Em curso">Em curso (A decorrer)</option>
+                        <option value="Agendado">Agendados</option>
+                        <option value="Falta">Faltas</option>
+                        <option value="Cancelado">Cancelados</option>
+</select>  
                     </div>
                 </div>
 
