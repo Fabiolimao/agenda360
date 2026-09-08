@@ -75,10 +75,20 @@ function gerarRelatorioApp() {
                 }
             }
 
+            // 📍 ETIQUETAS OFICIAIS DO RELATÓRIO
             let corStatus = 'color:var(--warning-color)';
             let lblStatus = e.status_turno;
-            if (lblStatus === 'Concluído' || lblStatus === 'A Aguardar Validação') { corStatus = 'color:var(--success-color)'; lblStatus = dic[curLang]['lbl_done']; }
-            if (lblStatus === 'Falta' || lblStatus === 'Cancelado') { corStatus = 'color:var(--danger-color)'; lblStatus = dic[curLang]['lbl_missed']; }
+            
+            if (lblStatus === 'Concluído' || lblStatus === 'A Aguardar Validação') { 
+                corStatus = 'color:var(--success-color)'; 
+                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_done']) ? dic[curLang]['lbl_done'] : 'Concluído'; 
+            } else if (lblStatus === 'Falta' || lblStatus === 'Cancelado') { 
+                corStatus = 'color:var(--danger-color)'; 
+                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_missed']) ? dic[curLang]['lbl_missed'] : 'Falta'; 
+            } else if (lblStatus === 'Em curso') { 
+                corStatus = 'color:var(--info-color, #0ea5e9); font-weight:800;'; 
+                lblStatus = 'Em curso ⏳'; 
+            }
 
             htmlContainerCartoes += `
                 <div class="rep-card">
@@ -103,6 +113,8 @@ function gerarRelatorioApp() {
             if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
                 txtLinhaHoras = `<span style="color:red; font-size:7pt; font-weight:bold;">${e.status_turno.toUpperCase()}</span>`;
                 txtPausaPrint = '-'; checkinPrint = '-'; checkoutPrint = '-';
+            } else if (e.status_turno === 'Em curso') {
+                txtLinhaHoras = `<span style="color:#0ea5e9; font-size:7pt; font-weight:bold;">A DECORRER</span>`;
             }
 
             htmlNovoCorpoTabelaPrint += `
