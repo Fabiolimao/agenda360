@@ -284,7 +284,7 @@ async function verificarAlertasDashboard() { const dashAlerts = document.getElem
 // ==========================================
 // MÓDULO: CALENDÁRIO OPERACIONAL
 // ==========================================
-async function carregarSelectsCalendario() {
+window.carregarSelectsCalendario = async function() {
     try {
         const [resF, resU] = await Promise.all([
             fetch(`/api/funcionarios/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -356,7 +356,7 @@ async function carregarSelectsCalendario() {
 
         gerarCalendario();
     } catch (e) { console.error("Erro selects calendário:", e); }
-}
+};
 
 async function gerarCalendario() {
     const funcId = document.getElementById('calFunc').value;
@@ -379,7 +379,6 @@ async function gerarCalendario() {
         let todasSols = await resS.json();
         if (!Array.isArray(todasEscalas)) return;
 
-        // 📍 CORREÇÃO APLICADA: Guilhotina de Datas para os dados do Calendário
         todasEscalas.forEach(e => {
             if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
             if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
@@ -401,7 +400,6 @@ async function gerarCalendario() {
         const scales = dadosEscalas.filter(e => (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
         const dataHojeStr = new Date().toISOString().slice(0, 10);
         
-        // Mantém a remoção dos filtros para que os "Cancelados" e "Expirados" apareçam na grelha
         const sols = dadosSolicitacoes.filter(s =>
             (unidadeId ? s.unidade_id == unidadeId : true)
         );
@@ -619,7 +617,8 @@ async function listarEscalas() {
         const agora = new Date();
         
         if (Array.isArray(todasAsEscalas)) {
-            todasAsEscalas.forEach(e => {
+            // Utilizamos um loop for...of para permitir pausas (await) e evitar o Erro 429
+            for (let e of todasAsEscalas) {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
                 if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
                 
@@ -634,10 +633,9 @@ async function listarEscalas() {
                             const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
                             e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
                             try {
-                                fetch(`/api/escalas/${e.id}`, { 
+                                await fetch(`/api/escalas/${e.id}`, { 
                                     method: 'PUT', 
                                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                                    // 📍 CORREÇÃO APLICADA: Envia todos os campos vitais para evitar o Erro 400
                                     body: JSON.stringify({ 
                                         unidade_id: e.unidade_id,
                                         funcionario_id: e.funcionario_id || 'A_DEFINIR',
@@ -648,12 +646,14 @@ async function listarEscalas() {
                                         hora_saida: e.hora_saida,
                                         status_turno: e.status_turno 
                                     }) 
-                                }).catch(()=>{});
+                                });
+                                // Pausa invisível de 100ms para evitar sobrecarga (Too Many Requests)
+                                await new Promise(r => setTimeout(r, 100)); 
                             } catch(err){}
                         }
                     }
                 }
-            });
+            }
         }
 
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
