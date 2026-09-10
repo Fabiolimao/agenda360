@@ -894,84 +894,132 @@ function toggleMultiplo() {
     document.getElementById('lblDataInicio').innerText = multi ? 'Data Início (A partir do dia)' : 'Data do Turno';
     const wrapper = document.getElementById('escMultiplo').closest('.toggle-wrapper');
     if (wrapper) { if (multi) wrapper.classList.add('active'); else wrapper.classList.remove('active'); }
-}
+
 
 function editarEscala(id) {
     const e = dadosEscalas.find(x => x.id === id); if (!e) return;
     const p = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
-    document.getElementById('escIdEdit').value = e.id;
-    document.getElementById('escUnidade').value = e.unidade_id;
-    document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
-    document.getElementById('escFuncao').value = e.funcao;
-    document.getElementById('escDataIn').value = e.data_inicio;
-    document.getElementById('escHoraIn').value = e.hora_entrada;
-    document.getElementById('escHoraOut').value = e.hora_saida;
+
+    // 1. BLINDAGEM: Verifica se o campo existe no HTML antes de preencher (Elimina o erro "null")
+    if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = e.id;
+    if(document.getElementById('escUnidade')) document.getElementById('escUnidade').value = e.unidade_id;
+    if(document.getElementById('escFunc')) document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
+    if(document.getElementById('escFuncao')) document.getElementById('escFuncao').value = e.funcao;
+    if(document.getElementById('escDataIn')) document.getElementById('escDataIn').value = e.data_inicio;
+    if(document.getElementById('escHoraIn')) document.getElementById('escHoraIn').value = e.hora_entrada;
+    if(document.getElementById('escHoraOut')) document.getElementById('escHoraOut').value = e.hora_saida;
 
     if (e.tem_pausa) {
-        document.getElementById('escPausa').checked = true;
-        document.getElementById('escMinutos').value = p;
+        if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = true;
+        if(document.getElementById('escMinutos')) document.getElementById('escMinutos').value = p;
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
-        
-        const extrairLiteral = (valor) => {
-            if (!valor) return '';
-            const vStr = String(valor);
-            if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
-            if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
-            return vStr.substring(0, 5);
-        };
-
-        if (inInput) inInput.value = extrairLiteral(e.timestamp_inicio_pausa) || extrairLiteral(e.hora_inicio_pausa) || '';
-        if (fimInput) fimInput.value = extrairLiteral(e.timestamp_fim_pausa) || extrairLiteral(e.hora_fim_pausa) || '';
+        if (inInput) inInput.value = e.timestamp_inicio_pausa ? new Date(e.timestamp_inicio_pausa).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
+        if (fimInput) fimInput.value = e.timestamp_fim_pausa ? new Date(e.timestamp_fim_pausa).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
     } else {
-        document.getElementById('escPausa').checked = false;
-        document.getElementById('escMinutos').value = 0;
-        const inInput = document.getElementById('escHoraInicioPausa');
-        const fimInput = document.getElementById('escHoraFimPausa');
-        if (inInput) inInput.value = '';
-        if (fimInput) fimInput.value = '';
+        if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = false;
+        if(document.getElementById('escMinutos')) document.getElementById('escMinutos').value = 0;
+        if(document.getElementById('escHoraInicioPausa')) document.getElementById('escHoraInicioPausa').value = '';
+        if(document.getElementById('escHoraFimPausa')) document.getElementById('escHoraFimPausa').value = '';
     }
-    togglePausaEsc();
+    if(typeof togglePausaEsc === 'function') togglePausaEsc();
 
-    document.getElementById('linhaAgendamentoMultiplo').style.display = 'none';
-    document.getElementById('linhaAcertoManual').style.display = 'block';
+    if(document.getElementById('linhaAgendamentoMultiplo')) document.getElementById('linhaAgendamentoMultiplo').style.display = 'none';
+    
+    // 2. MAGIA DO POP-UP: Transforma o bloco atual numa janela flutuante perfeitamente centrada
+    const formAcerto = document.getElementById('linhaAcertoManual');
+    if(formAcerto) {
+        formAcerto.style.display = 'block';
+        formAcerto.style.position = 'fixed';
+        formAcerto.style.top = '50%';
+        formAcerto.style.left = '50%';
+        formAcerto.style.transform = 'translate(-50%, -50%)';
+        formAcerto.style.zIndex = '10000';
+        formAcerto.style.backgroundColor = '#ffffff';
+        formAcerto.style.padding = '25px';
+        formAcerto.style.borderRadius = '12px';
+        formAcerto.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
+        formAcerto.style.width = '90%';
+        formAcerto.style.maxWidth = '600px';
+        formAcerto.style.maxHeight = '90vh';
+        formAcerto.style.overflowY = 'auto';
+
+        // Cria o fundo escuro atrás do pop-up
+        let overlay = document.getElementById('fundoEscuroPopUp');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'fundoEscuroPopUp';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0'; overlay.style.left = '0';
+            overlay.style.width = '100vw'; overlay.style.height = '100vh';
+            overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.75)';
+            overlay.style.backdropFilter = 'blur(4px)';
+            overlay.style.zIndex = '9999';
+            document.body.appendChild(overlay);
+        }
+        overlay.style.display = 'block';
+    }
+
     const boxObs = document.getElementById('boxObsCliente');
-    if (e.obs_cliente) { document.getElementById('lblObsCliente').innerText = `"${e.obs_cliente}"`; boxObs.style.display = 'block'; } else { boxObs.style.display = 'none'; }
-    document.getElementById('escStatus').value = e.status_turno || 'Agendado';
-    document.getElementById('escCheckinReal').value = e.checkin_real || '';
-    document.getElementById('escCheckoutReal').value = e.checkout_real || '';
-    document.getElementById('btnSalvarEscala').innerText = 'Gravar Acerto do Turno';
-    document.getElementById('btnCancelarEscala').style.display = 'inline-block';
-    destacarFormulario('formEscala');
+    if (boxObs) {
+        if (e.obs_cliente) { 
+            if(document.getElementById('lblObsCliente')) document.getElementById('lblObsCliente').innerText = `"${e.obs_cliente}"`; 
+            boxObs.style.display = 'block'; 
+        } else { 
+            boxObs.style.display = 'none'; 
+        }
+    }
+    if(document.getElementById('escStatus')) document.getElementById('escStatus').value = e.status_turno || 'Agendado';
+    if(document.getElementById('escCheckinReal')) document.getElementById('escCheckinReal').value = e.checkin_real || '';
+    if(document.getElementById('escCheckoutReal')) document.getElementById('escCheckoutReal').value = e.checkout_real || '';
+    if(document.getElementById('btnSalvarEscala')) document.getElementById('btnSalvarEscala').innerText = 'Gravar Acerto do Turno';
+    if(document.getElementById('btnCancelarEscala')) document.getElementById('btnCancelarEscala').style.display = 'inline-block';
 }
 
 function cancelarEdicaoEscala() {
-    removerDestaqueFormulario();
-    document.getElementById('formEscala').reset();
-    document.getElementById('escIdEdit').value = '';
-    document.getElementById('linhaAcertoManual').style.display = 'none';
+    if(typeof removerDestaqueFormulario === 'function') removerDestaqueFormulario();
+    const form = document.getElementById('formEscala');
+    if (form) form.reset();
+    
+    if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = '';
+    
+    // 3. LIMPEZA: Esconde o formulário flutuante e o fundo escuro sem deixar rasto
+    const formAcerto = document.getElementById('linhaAcertoManual');
+    if(formAcerto) {
+        formAcerto.style.display = 'none';
+        formAcerto.style.position = '';
+        formAcerto.style.top = '';
+        formAcerto.style.left = '';
+        formAcerto.style.transform = '';
+        formAcerto.style.zIndex = '';
+    }
 
-    document.getElementById('escMultiplo').checked = false;
-    toggleMultiplo();
-    document.getElementById('escPausa').checked = false;
-    const inInput = document.getElementById('escHoraInicioPausa');
-    const fimInput = document.getElementById('escHoraFimPausa');
-    if (inInput) inInput.value = '';
-    if (fimInput) fimInput.value = '';
-    togglePausaEsc();
+    const overlay = document.getElementById('fundoEscuroPopUp');
+    if (overlay) overlay.style.display = 'none';
 
-    document.getElementById('escStatus').value = 'Agendado';
-    document.getElementById('boxObsCliente').style.display = 'none';
-    document.getElementById('btnSalvarEscala').innerText = 'Confirmar Agendamento';
-    document.getElementById('btnCancelarEscala').style.display = 'none';
-    if (magicSolId) {
-        atualizarUIMagica();
-        removerDestaqueFormulario();
+    if(document.getElementById('escMultiplo')) document.getElementById('escMultiplo').checked = false;
+    if(typeof toggleMultiplo === 'function') toggleMultiplo();
+    
+    if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = false;
+    if(document.getElementById('escHoraInicioPausa')) document.getElementById('escHoraInicioPausa').value = '';
+    if(document.getElementById('escHoraFimPausa')) document.getElementById('escHoraFimPausa').value = '';
+    if(typeof togglePausaEsc === 'function') togglePausaEsc();
+
+    if(document.getElementById('escStatus')) document.getElementById('escStatus').value = 'Agendado';
+    if(document.getElementById('boxObsCliente')) document.getElementById('boxObsCliente').style.display = 'none';
+    if(document.getElementById('btnSalvarEscala')) document.getElementById('btnSalvarEscala').innerText = 'Confirmar Agendamento';
+    if(document.getElementById('btnCancelarEscala')) document.getElementById('btnCancelarEscala').style.display = 'none';
+    
+    if (typeof magicSolId !== 'undefined' && magicSolId) {
+        if(typeof atualizarUIMagica === 'function') atualizarUIMagica();
     } else {
-        document.getElementById('linhaAgendamentoMultiplo').style.display = 'block';
-        document.getElementById('bannerMagico').style.display = 'none';
-        document.getElementById('linhaAgendamentoMultiplo').style.border = '1px solid #e2e8f0';
-        document.getElementById('linhaAgendamentoMultiplo').style.background = '#f8fafc';
+        const linhaAg = document.getElementById('linhaAgendamentoMultiplo');
+        if(linhaAg) {
+            linhaAg.style.display = 'block';
+            linhaAg.style.border = '1px solid #e2e8f0';
+            linhaAg.style.background = '#f8fafc';
+        }
+        if(document.getElementById('bannerMagico')) document.getElementById('bannerMagico').style.display = 'none';
     }
 }
 
