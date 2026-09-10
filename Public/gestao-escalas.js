@@ -456,7 +456,7 @@ window.abrirResumoDia = function (dataStr) {
         (funcId ? e.funcionario_id == funcId : true) && 
         (unidadeId ? e.unidade_id == unidadeId : true) &&
         e.status_turno !== 'Cancelado' &&
-        e.status_turno !== 'Agendamento Não efetivado'
+        
     );
 
     const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true) && s.status !== 'Cancelado' && s.status !== 'Recusado');
