@@ -389,11 +389,10 @@ async function gerarCalendario() {
 
         const scales = dadosEscalas.filter(e => (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
         const dataHojeStr = new Date().toISOString().slice(0, 10);
+        
+        // FILTRO REMOVIDO: Agora a grelha não vai esconder pedidos recusados, cancelados ou expirados!
         const sols = dadosSolicitacoes.filter(s =>
-            (unidadeId ? s.unidade_id == unidadeId : true) &&
-            s.status !== 'Cancelado' &&
-            s.status !== 'Recusado' &&
-            !(s.data_inicio < dataHojeStr && (s.alocados ? parseInt(s.alocados) : 0) < s.quantidade)
+            (unidadeId ? s.unidade_id == unidadeId : true)
         );
 
         for (let i = 0; i < primeiroDia; i++) grid.innerHTML += `<div class="cal-day empty-pad" style="background:#f8fafc; border:none; cursor:default;"></div>`;
@@ -408,12 +407,19 @@ async function gerarCalendario() {
             solsDia.forEach(s => {
                 const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
                 if (pendentes > 0) {
-                    blocosDia.push(`<div class="cal-escala" style="background:#fffbeb; border-left:3px solid var(--warning-color); color:#b45309; cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();" title="Pedido B2B">⏳ ${pendentes}x ${sanitizarTexto(s.funcao)}</div>`);
+                    const isExpirado = (s.data_inicio < dataHojeStr) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
+                    const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
+                    const corBorda = isExpirado ? 'var(--danger-color)' : 'var(--warning-color)';
+                    const corTexto = isExpirado ? '#991b1b' : '#b45309';
+                    const icon = isExpirado ? '❌' : '⏳';
+                    
+                    blocosDia.push(`<div class="cal-escala" style="background:${corFundo}; border-left:3px solid ${corBorda}; color:${corTexto}; cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();" title="Pedido B2B">${icon} ${pendentes}x ${sanitizarTexto(s.funcao)}</div>`);
                 }
             });
 
             turnosDia.forEach(t => {
-                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && t.status_turno !== 'Agendamento Não efetivado' && t.status_turno !== 'Cancelado';
+                let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
+                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
                 let cor = 'laranja';
 
                 if (isAdefinir) cor = 'laranja';
@@ -421,7 +427,7 @@ async function gerarCalendario() {
                 else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') cor = 'vermelha';
                 else if (new Date(t.data_inicio) < new Date() && !t.checkin_real) cor = 'vermelha';
 
-                let txtNomeCurto = isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido');
+                let txtNomeCurto = isVagaCancelada ? '❌ Vaga Cancelada' : (isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido'));
                 let txt = '';
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
@@ -451,28 +457,36 @@ window.abrirResumoDia = function (dataStr) {
     let unidadeId = document.getElementById('calUnidade').value;
     if (tipoAcesso === 'gestor') unidadeId = gestorUnidadeId;
 
+    // FILTRO REMOVIDO: Agora a janela do dia não vai ocultar os Turnos Cancelados/Não efetivados
     const turnosDia = dadosEscalas.filter(e => 
         e.data_inicio === dataStr && 
         (funcId ? e.funcionario_id == funcId : true) && 
-        (unidadeId ? e.unidade_id == unidadeId : true) &&
-        e.status_turno !== 'Cancelado' &&
-        e.status_turno !== 'Agendamento Não efetivado'
+        (unidadeId ? e.unidade_id == unidadeId : true)
     );
 
-    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true) && s.status !== 'Cancelado' && s.status !== 'Recusado');
+    // FILTRO REMOVIDO: Agora a janela do dia não vai ocultar os Pedidos B2B Cancelados/Recusados
+    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true));
 
     let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
     solsDia.forEach(s => {
         const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
         if (pendentes > 0) {
+            const isExpirado = (s.data_inicio < new Date().toISOString().slice(0, 10)) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
+            const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
+            const corBordaPrincipal = isExpirado ? '#fca5a5' : '#fcd34d';
+            const corBordaEsquerda = isExpirado ? '#ef4444' : '#f59e0b';
+            const corTextoTitulo = isExpirado ? '#991b1b' : '#b45309';
+            const corTextoSecundario = isExpirado ? '#7f1d1d' : '#78350f';
+            const icon = isExpirado ? '❌' : '🛎️';
+
             html += `
-            <div style="background:#fffbeb; border:1px solid #fcd34d; border-left:4px solid #f59e0b; padding:12px; border-radius:6px;">
+            <div style="background:${corFundo}; border:1px solid ${corBordaPrincipal}; border-left:4px solid ${corBordaEsquerda}; padding:12px; border-radius:6px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <b style="color:#b45309; font-size:1.05rem;">🛎️ Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
-                        <span style="color:#78350f;">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
-                        <small style="color:#92400e;">Horário: ${s.hora_entrada} às ${s.hora_saida}</small>
+                        <b style="color:${corTextoTitulo}; font-size:1.05rem;">${icon} Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
+                        <span style="color:${corTextoSecundario};">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
+                        <small style="color:${corTextoSecundario};">Horário: ${s.hora_entrada} às ${s.hora_saida}</small>
                     </div>
                     ${(tipoAcesso !== 'gestor' && dataStr >= new Date().toISOString().slice(0, 10)) ? `<button class="btn-action" style="background:var(--success-color); color:white; font-size:0.8rem; padding:6px 12px;" onclick="document.getElementById('modalVer').style.display='none'; atenderSolicitacaoMagica(${s.id})">🪄 Atender Pedido</button>` : ''}
                 </div>
