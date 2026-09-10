@@ -1,4 +1,13 @@
 // ==========================================
+// VARIÁVEIS GLOBAIS DE ESTADO
+// ==========================================
+let magicSolId = null;
+let magicQtd = 0;
+let magicAlocados = 0;
+let dadosEscalas = [];
+let dadosSolicitacoes = [];
+
+// ==========================================
 // MÓDULO: SOLICITAÇÕES B2B E EXTRAS
 // ==========================================
 async function carregarDropdownsSolicitacoes() {
@@ -384,7 +393,6 @@ async function gerarCalendario() {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
                 if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
 
-                // 📍 MOTOR DE AUTO-LIMPEZA DO GESTOR (Visível Imediatamente no Calendário)
                 if (e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno) {
                     if (e.data_inicio && e.hora_entrada) {
                         const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
@@ -459,18 +467,25 @@ async function gerarCalendario() {
             turnosDia.forEach(t => {
                 let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
                 let cor = 'laranja';
+                let estiloInline = '';
 
-                if (isAdefinir) cor = 'laranja';
-                else if (t.status_turno === 'Concluído') cor = 'verde';
-                else if (t.status_turno === 'Falta') cor = 'vermelha';
+                if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real && t.status_turno !== 'Falta' && t.status_turno !== 'Cancelado')) {
+                    cor = 'azul';
+                    estiloInline = 'background: var(--info-color, #0ea5e9); color: white; border-color: #0284c7; font-weight: bold;';
+                }
+                else if (isAdefinir) cor = 'laranja';
+                else if (t.status_turno === 'Concluído' || t.status_turno === 'A Aguardar Validação') cor = 'verde';
+                else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') cor = 'vermelha';
                 else if (new Date(t.data_inicio) < new Date() && !t.checkin_real) cor = 'vermelha';
 
                 let txtNomeCurto = isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido');
+                if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real && t.status_turno !== 'Falta' && t.status_turno !== 'Cancelado')) txtNomeCurto = '⏳ ' + txtNomeCurto;
+                
                 let txt = '';
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
 
-                blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
+                blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer; ${estiloInline}" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
             });
 
             let hideMobileClass = (blocosDia.length === 0) ? 'empty-pad' : '';
@@ -531,11 +546,17 @@ window.abrirResumoDia = function (dataStr) {
     turnosDia.forEach(t => {
         let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
         let txtNome = isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido');
+        
         let statusInfo = sanitizarTexto(t.status_turno);
         let corBorda = '#cbd5e1'; let corFundo = '#f8fafc';
 
-        if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
-        else if (t.status_turno === 'Falta') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
+        if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real && t.status_turno !== 'Falta' && t.status_turno !== 'Cancelado')) { 
+            statusInfo = 'EM CURSO ⏳'; 
+            corBorda = 'var(--info-color, #0ea5e9)'; 
+            corFundo = '#f0f9ff'; 
+        }
+        else if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
+        else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
         else if (t.status_turno === 'A Aguardar Validação') corBorda = 'var(--warning-color)';
         else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
         else if (isAdefinir) { corBorda = '#f59e0b'; corFundo = '#fffbeb'; }
@@ -697,7 +718,7 @@ function renderizarTabelaEscalas() {
     let escalasFiltradas = [];
 
     if (window.abaAtivaEscalas === 'pendentes') {
-        escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno);
+        escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno || e.status_turno === 'Em curso');
     } else if (window.abaAtivaEscalas === 'validacao') {
         escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'A Aguardar Validação');
     } else if (window.abaAtivaEscalas === 'historico') {
@@ -733,8 +754,11 @@ function renderizarTabelaEscalas() {
     escalasFiltradas.forEach(e => {
         let statusOriginal = sanitizarTexto(e.status_turno || 'Agendado');
         let txt = statusOriginal;
-        if (e.checkin_real && !e.checkout_real && txt !== 'Falta' && txt !== 'Cancelado' && txt !== 'Agendamento Não efetivado') txt += ' (Em curso)';
-        if (txt === 'Falta' || txt === 'Cancelado' || txt === 'Agendamento Não efetivado') txt = `<span style="color:var(--danger-color);font-weight:bold;">${txt}</span>`;
+        
+        if (e.status_turno === 'Em curso' || (e.checkin_real && !e.checkout_real && txt !== 'Falta' && txt !== 'Cancelado' && txt !== 'Agendamento Não efetivado')) {
+            txt = `<span style="color:var(--info-color, #0ea5e9); font-weight:800; background:#f0f9ff; padding:4px 10px; border-radius:12px; border:1px solid #bae6fd;">EM CURSO ⏳</span>`;
+        }
+        else if (txt === 'Falta' || txt === 'Cancelado' || txt === 'Agendamento Não efetivado') txt = `<span style="color:var(--danger-color);font-weight:bold;">${txt}</span>`;
         else if (txt === 'Concluído') txt = `<span style="color:var(--success-color);font-weight:bold;">${txt}</span>`;
         else if (txt === 'A Aguardar Validação') txt = `<span style="color:var(--warning-color);font-weight:bold;">⏳ ${txt}</span>`;
         else if (txt === 'Pendente') txt = `<span style="color:var(--warning-color);font-weight:bold; background:#fffbeb; padding:2px 8px; border-radius:12px; border:1px dashed #fcd34d;">${txt}</span>`;
@@ -894,13 +918,13 @@ function toggleMultiplo() {
     document.getElementById('lblDataInicio').innerText = multi ? 'Data Início (A partir do dia)' : 'Data do Turno';
     const wrapper = document.getElementById('escMultiplo').closest('.toggle-wrapper');
     if (wrapper) { if (multi) wrapper.classList.add('active'); else wrapper.classList.remove('active'); }
-
+}
 
 function editarEscala(id) {
     const e = dadosEscalas.find(x => x.id === id); if (!e) return;
     const p = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
 
-    // 1. BLINDAGEM: Verifica se o campo existe no HTML antes de preencher (Elimina o erro "null")
+    // 1. BLINDAGEM: Verifica se o campo existe no HTML antes de preencher
     if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = e.id;
     if(document.getElementById('escUnidade')) document.getElementById('escUnidade').value = e.unidade_id;
     if(document.getElementById('escFunc')) document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
@@ -1055,8 +1079,8 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             const dataTurno = document.getElementById('escDataIn').value;
             baseDados.data_inicio = dataTurno;
             baseDados.data_fim = dataTurno;
-            baseDados.checkin_real = document.getElementById('escCheckinReal').value || null;
-            baseDados.checkout_real = document.getElementById('escCheckoutReal').value || null;
+            baseDados.checkin_real = document.getElementById('escCheckinReal') ? document.getElementById('escCheckinReal').value : null;
+            baseDados.checkout_real = document.getElementById('escCheckoutReal') ? document.getElementById('escCheckoutReal').value : null;
             baseDados.status_turno = document.getElementById('escStatus') ? document.getElementById('escStatus').value : 'Agendado';
             
             baseDados.timestamp_inicio_pausa = vInicio ? `${dataTurno}T${vInicio}:00` : null;
@@ -1198,9 +1222,9 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             }
         }
     } catch (err) { alert("Erro de comunicação com o servidor."); }
+    btn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
     btn.disabled = false;
-});tn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
-    b
+});
 
 async function apagarEscala(id) { 
     if (confirm("Tem a certeza que deseja apagar/cancelar este turno?")) { 
