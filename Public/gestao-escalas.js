@@ -379,6 +379,17 @@ async function gerarCalendario() {
         let todasSols = await resS.json();
         if (!Array.isArray(todasEscalas)) return;
 
+        // 📍 CORREÇÃO APLICADA: Guilhotina de Datas para os dados do Calendário
+        todasEscalas.forEach(e => {
+            if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+            if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+        });
+        if (Array.isArray(todasSols)) {
+            todasSols.forEach(s => {
+                if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
+            });
+        }
+
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
             dadosEscalas = todasEscalas.filter(e => e.unidade_id == gestorUnidadeId);
             dadosSolicitacoes = Array.isArray(todasSols) ? todasSols.filter(s => s.unidade_id == gestorUnidadeId) : [];
@@ -390,7 +401,7 @@ async function gerarCalendario() {
         const scales = dadosEscalas.filter(e => (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
         const dataHojeStr = new Date().toISOString().slice(0, 10);
         
-        // FILTRO REMOVIDO: Agora a grelha não vai esconder pedidos recusados, cancelados ou expirados!
+        // Mantém a remoção dos filtros para que os "Cancelados" e "Expirados" apareçam na grelha
         const sols = dadosSolicitacoes.filter(s =>
             (unidadeId ? s.unidade_id == unidadeId : true)
         );
@@ -457,14 +468,12 @@ window.abrirResumoDia = function (dataStr) {
     let unidadeId = document.getElementById('calUnidade').value;
     if (tipoAcesso === 'gestor') unidadeId = gestorUnidadeId;
 
-    // FILTRO REMOVIDO: Agora a janela do dia não vai ocultar os Turnos Cancelados/Não efetivados
     const turnosDia = dadosEscalas.filter(e => 
         e.data_inicio === dataStr && 
         (funcId ? e.funcionario_id == funcId : true) && 
         (unidadeId ? e.unidade_id == unidadeId : true)
     );
 
-    // FILTRO REMOVIDO: Agora a janela do dia não vai ocultar os Pedidos B2B Cancelados/Recusados
     const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true));
 
     let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
@@ -628,7 +637,17 @@ async function listarEscalas() {
                                 fetch(`/api/escalas/${e.id}`, { 
                                     method: 'PUT', 
                                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                                    body: JSON.stringify({ status_turno: e.status_turno }) 
+                                    // 📍 CORREÇÃO APLICADA: Envia todos os campos vitais para evitar o Erro 400
+                                    body: JSON.stringify({ 
+                                        unidade_id: e.unidade_id,
+                                        funcionario_id: e.funcionario_id || 'A_DEFINIR',
+                                        funcao: e.funcao,
+                                        data_inicio: e.data_inicio,
+                                        data_fim: e.data_fim,
+                                        hora_entrada: e.hora_entrada,
+                                        hora_saida: e.hora_saida,
+                                        status_turno: e.status_turno 
+                                    }) 
                                 }).catch(()=>{});
                             } catch(err){}
                         }
