@@ -1,11 +1,3 @@
-// ==========================================
-// VARIÁVEIS GLOBAIS DE ESTADO
-// ==========================================
-let magicSolId = null;
-let magicQtd = 0;
-let magicAlocados = 0;
-let dadosEscalas = [];
-let dadosSolicitacoes = [];
 
 // ==========================================
 // MÓDULO: SOLICITAÇÕES B2B E EXTRAS
