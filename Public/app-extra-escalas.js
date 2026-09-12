@@ -97,16 +97,11 @@ function renderTurnosHome() {
         // 📍 O NOVO MOTOR: Usamos o rasto deixado pelo servidor para saber a verdade absoluta
         const gpsLog = e.controlo_gps || ''; 
 
-        // 📍 CORREÇÃO 1: Conversão blindada de UTC para hora local de Portugal
+        // 📍 CORREÇÃO 1: Extração literal da hora para matar o fantasma do Fuso Horário
         const extrairHHMM = (valor) => {
             if (!valor) return '';
-            if (String(valor).includes('Z') || String(valor).includes('T')) {
-                const dataObj = new Date(valor);
-                if (!isNaN(dataObj)) {
-                    return dataObj.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
-                }
-            }
             const vStr = String(valor);
+            if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
             if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
             return vStr.substring(0, 5);
         };
@@ -123,7 +118,6 @@ function renderTurnosHome() {
         const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
         const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
 
-        // 📍 CORREÇÃO 2: Novo design padronizado de Previsto vs Realizado
         const turnoPrevisto = `${e.hora_entrada || '--:--'} às ${e.hora_saida || '--:--'}`;
         let turnoReal = 'A aguardar';
         if (e.checkin_real && e.checkout_real) turnoReal = `${extrairHHMM(e.checkin_real)} às ${extrairHHMM(e.checkout_real)}`;
@@ -135,15 +129,25 @@ function renderTurnosHome() {
         let corPausa = '#475569';
         const pReal = e.minutos_pausa_realizados !== undefined ? e.minutos_pausa_realizados : '-';
 
-        if (e.checkin_real && !e.checkout_real && gpsLog.includes('Pausa Início:')) {
+        // 📍 CORREÇÃO 2: Cruzamento com GPS Log para garantir que a pausa foi mesmo executada
+        const fezPausaReal = gpsLog.includes('Pausa Início:');
+        const fechouPausaReal = gpsLog.includes('Pausa Fim:');
+        
+        let txtPrevista = `${pMin} min`;
+        if (hasInicioPausa && hasFimPausa && !fezPausaReal) {
+            // Se tem horas marcadas mas não há rasto de ação, é a previsão do Gestor
+            txtPrevista = `${hI} às ${hF} (${pMin} min)`;
+        }
+
+        if (e.checkin_real && !e.checkout_real && fezPausaReal && !fechouPausaReal) {
             estadoPausa = `Em curso (Início: ${hI})`;
             bgPausa = '#fef3c7';
             corPausa = '#b45309';
-        } else if (hasInicioPausa && hasFimPausa) {
+        } else if (fezPausaReal && fechouPausaReal) {
             estadoPausa = `${hI} às ${hF} (${pReal} min)`;
             bgPausa = '#f0fdf4';
             corPausa = '#166534';
-        } else if (e.status_turno === 'Concluído' || e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
+        } else if (e.status_turno === 'Concluído' || e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') {
             estadoPausa = 'Não realizada';
         }
 
@@ -157,7 +161,7 @@ function renderTurnosHome() {
                 <div style="height:1px; background:#e2e8f0; width:100%;"></div>
                 <div style="background:${bgPausa}; padding:6px 8px; border-radius:6px;">
                     <div style="font-size:0.75rem; color:${corPausa}; font-weight:bold; text-transform:uppercase;">☕ Pausa</div>
-                    <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${pMin} min</span></div>
+                    <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${txtPrevista}</span></div>
                     <div style="font-size:0.85rem; color:${corPausa};">Realizada: <span style="font-weight:600;">${estadoPausa}</span></div>
                 </div>
             </div>
@@ -173,13 +177,14 @@ function renderTurnosHome() {
             statusClass = 'curso';
             let botoesPausaHTML = '';
             
-            if (gpsLog.includes('Entrada:')) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
-            } else if (gpsLog.includes('Pausa Início:')) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
+            // 📍 CORREÇÃO 3: Proteção dos botões baseada na realidade (GPS) e não nas previsões
+            if (!fezPausaReal) {
+                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
+            } else if (fezPausaReal && !fechouPausaReal) {
+                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
             }
             
-            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirJanelaGPS(${e.id}, 'saida')">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
+            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
             const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
@@ -192,7 +197,16 @@ function renderTurnosHome() {
             } else if (diffMinutos < -120) {
                 statusClass = 'falta';
                 btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">Falta (Expirado)</div>`;
-                e.status_turno = 'Falta'; 
+                
+                if(e.status_turno !== 'Falta') {
+                    const token = localStorage.getItem('agenda360_func_token');
+                    fetch(`/api/escalas/${e.id}`, { 
+                        method: 'PUT', 
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
+                        body: JSON.stringify({ status_turno: 'Falta' }) 
+                    }).catch(()=>{});
+                    e.status_turno = 'Falta'; 
+                }
             } else {
                 btnHTML = `<button class="btn-point btn-in" onclick="abrirJanelaGPS(${e.id}, 'entrada')">${dic[curLang]['js_btn_in'] || 'Picar Entrada'}</button>`;
             }
@@ -200,7 +214,7 @@ function renderTurnosHome() {
 
         container.innerHTML += `
             <div class="shift-card ${statusClass}">
-                <div class="shift-header"><span>📅 ${e.data_inicio}</span></div>
+                <div class="shift-header"><span>📅 ${e.data_inicio}</span><span>${e.hora_entrada} - ${e.hora_saida}</span></div>
                 <div class="shift-title">${e.nome_unidade}</div>
                 <div class="shift-detail">📍 ${e.rua || '-'}, ${e.cidade || ''}</div>
                 <div class="shift-detail">⚙️ ${e.funcao}</div>

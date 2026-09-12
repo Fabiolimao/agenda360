@@ -1,4 +1,13 @@
 // ==========================================
+// VARIÁVEIS GLOBAIS
+// ==========================================
+let magicSolId = null;
+let magicQtd = 0;
+let magicAlocados = 0;
+let dadosEscalas = [];
+let dadosSolicitacoes = [];
+
+// ==========================================
 // MÓDULO: SOLICITAÇÕES B2B E EXTRAS
 // ==========================================
 async function carregarDropdownsSolicitacoes() {
@@ -167,9 +176,10 @@ async function listarSolicitacoes() {
         let sols = await res.json(); 
         if (!Array.isArray(sols)) return; 
 
+        // 📍 CORREÇÃO DATA: Blindagem para garantir que a data não sofre anomalias visuais (remove o 'T00:00Z')
         sols.forEach(s => {
-            if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
-            if (s.data_pedido) s.data_pedido = s.data_pedido.split('T')[0];
+            if (s.data_inicio) s.data_inicio = String(s.data_inicio).split('T')[0];
+            if (s.data_pedido) s.data_pedido = String(s.data_pedido).split('T')[0];
         });
 
         const dataHojeStr = new Date().toISOString().slice(0, 10);
@@ -280,11 +290,10 @@ function cancelarMagica() {
 }
 async function verificarAlertasDashboard() { const dashAlerts = document.getElementById('boxAlertasDashboard'); if (!dashAlerts) return; try { const res = await fetch(`/api/solicitacoes/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } }); let sols = await res.json(); dashAlerts.innerHTML = ''; if (!Array.isArray(sols)) return; if (tipoAcesso !== 'gestor') { const pendentes = sols.filter(s => { const mAloc = s.alocados ? parseInt(s.alocados) : 0; return mAloc < s.quantidade && !s.status.includes('Recusado') && !s.status.includes('Cancelado') && !s.status.includes('Expirado'); }); if (pendentes.length > 0) { dashAlerts.innerHTML = `<div style="background:#fffbeb; border:2px solid var(--warning-color); padding:15px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="color:#b45309; margin:0 0 5px 0;">🔔 Alerta de Operação B2B</h3><p style="color:#78350f; margin:0;">Existem <b>${pendentes.length}</b> pedidos de clientes a aguardar alocação de equipa.</p></div><button class="btn-action" style="background:var(--warning-color); color:black;" onclick="navegar('solicitacoes', document.querySelector('#menuSolicitacoes a'))">Ver Pedidos</button></div>`; } } else { sols = sols.filter(s => s.unidade_id == gestorUnidadeId); const concluidos = sols.filter(s => { const mAloc = s.alocados ? parseInt(s.alocados) : 0; return mAloc >= s.quantidade; }); if (concluidos.length > 0) { dashAlerts.innerHTML = `<div style="background:#f0fdf4; border:2px solid var(--success-color); padding:15px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="color:#065f46; margin:0 0 5px 0;">✅ Pedidos Atendidos</h3><p style="color:#064e3b; margin:0;">Os seus pedidos recentes de equipa foram totalmente preenchidos pela Agência.</p></div><button class="btn-action" style="background:var(--success-color);" onclick="navegar('solicitacoes', document.querySelector('#menuSolicitacoes a'))">Ver Equipa</button></div>`; } } } catch (e) { } }
 
-
 // ==========================================
 // MÓDULO: CALENDÁRIO OPERACIONAL
 // ==========================================
-window.carregarSelectsCalendario = async function() {
+async function carregarSelectsCalendario() {
     try {
         const [resF, resU] = await Promise.all([
             fetch(`/api/funcionarios/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -350,13 +359,13 @@ window.carregarSelectsCalendario = async function() {
                     selFiltroCli.innerHTML += `<option value="${nome}">${sanitizarTexto(nome)}</option>`;
                 }
             } else if (selFiltroCli.parentElement) {
-                selFiltroCli.parentElement.style.display = 'none'; // Gestor local não precisa filtrar empresas
+                selFiltroCli.parentElement.style.display = 'none';
             }
         }
 
         gerarCalendario();
     } catch (e) { console.error("Erro selects calendário:", e); }
-};
+}
 
 async function gerarCalendario() {
     const funcId = document.getElementById('calFunc').value;
@@ -377,17 +386,46 @@ async function gerarCalendario() {
         ]);
         let todasEscalas = await resE.json();
         let todasSols = await resS.json();
-        if (!Array.isArray(todasEscalas)) return;
+        
+        const agora = new Date();
 
-        todasEscalas.forEach(e => {
-            if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
-            if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
-        });
-        if (Array.isArray(todasSols)) {
-            todasSols.forEach(s => {
-                if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
+        // 📍 CORREÇÃO DATA: Blindagem contra fuso horário anómalo (T00:00:00.000Z)
+        if (Array.isArray(todasEscalas)) {
+            todasEscalas.forEach(e => {
+                if (e.data_inicio) e.data_inicio = String(e.data_inicio).split('T')[0];
+                if (e.data_fim) e.data_fim = String(e.data_fim).split('T')[0];
+
+                if (e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno) {
+                    if (e.data_inicio && e.hora_entrada) {
+                        const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
+                        const [horaT, minT] = e.hora_entrada.split(':').map(Number);
+                        const dataTurnoObjeto = new Date(anoT, mesT - 1, diaT, horaT, minT);
+                        const diffMinutos = (dataTurnoObjeto - agora) / (1000 * 60);
+                        
+                        if (diffMinutos < -120) {
+                            const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
+                            e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
+                            try {
+                                fetch(`/api/escalas/${e.id}`, { 
+                                    method: 'PUT', 
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
+                                    body: JSON.stringify({ status_turno: e.status_turno }) 
+                                }).catch(()=>{});
+                            } catch(err){}
+                        }
+                    }
+                }
             });
         }
+
+        if (Array.isArray(todasSols)) {
+            todasSols.forEach(s => {
+                if (s.data_inicio) s.data_inicio = String(s.data_inicio).split('T')[0];
+                if (s.data_pedido) s.data_pedido = String(s.data_pedido).split('T')[0];
+            });
+        }
+
+        if (!Array.isArray(todasEscalas)) return;
 
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
             dadosEscalas = todasEscalas.filter(e => e.unidade_id == gestorUnidadeId);
@@ -397,11 +435,19 @@ async function gerarCalendario() {
             dadosSolicitacoes = Array.isArray(todasSols) ? todasSols : [];
         }
 
-        const scales = dadosEscalas.filter(e => (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
+        const scales = dadosEscalas.filter(e => 
+            (funcId ? e.funcionario_id == funcId : true) && 
+            (unidadeId ? e.unidade_id == unidadeId : true) &&
+            e.status_turno !== 'Cancelado' &&
+            e.status_turno !== 'Agendamento Não efetivado'
+        );
+
         const dataHojeStr = new Date().toISOString().slice(0, 10);
-        
         const sols = dadosSolicitacoes.filter(s =>
-            (unidadeId ? s.unidade_id == unidadeId : true)
+            (unidadeId ? s.unidade_id == unidadeId : true) &&
+            s.status !== 'Cancelado' &&
+            s.status !== 'Recusado' &&
+            !(s.data_inicio < dataHojeStr && (s.alocados ? parseInt(s.alocados) : 0) < s.quantidade)
         );
 
         for (let i = 0; i < primeiroDia; i++) grid.innerHTML += `<div class="cal-day empty-pad" style="background:#f8fafc; border:none; cursor:default;"></div>`;
@@ -416,32 +462,32 @@ async function gerarCalendario() {
             solsDia.forEach(s => {
                 const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
                 if (pendentes > 0) {
-                    const isExpirado = (s.data_inicio < dataHojeStr) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
-                    const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
-                    const corBorda = isExpirado ? 'var(--danger-color)' : 'var(--warning-color)';
-                    const corTexto = isExpirado ? '#991b1b' : '#b45309';
-                    const icon = isExpirado ? '❌' : '⏳';
-                    
-                    blocosDia.push(`<div class="cal-escala" style="background:${corFundo}; border-left:3px solid ${corBorda}; color:${corTexto}; cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();" title="Pedido B2B">${icon} ${pendentes}x ${sanitizarTexto(s.funcao)}</div>`);
+                    blocosDia.push(`<div class="cal-escala" style="background:#fffbeb; border-left:3px solid var(--warning-color); color:#b45309; cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();" title="Pedido B2B">⏳ ${pendentes}x ${sanitizarTexto(s.funcao)}</div>`);
                 }
             });
 
             turnosDia.forEach(t => {
-                let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
-                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
+                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
                 let cor = 'laranja';
+                let estiloInline = '';
 
-                if (isAdefinir) cor = 'laranja';
-                else if (t.status_turno === 'Concluído') cor = 'verde';
-                else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') cor = 'vermelha';
+                if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real)) {
+                    cor = 'azul';
+                    estiloInline = 'background: var(--info-color, #0ea5e9); color: white; border-color: #0284c7; font-weight: bold;';
+                }
+                else if (isAdefinir) cor = 'laranja';
+                else if (t.status_turno === 'Concluído' || t.status_turno === 'A Aguardar Validação') cor = 'verde';
+                else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado') cor = 'vermelha';
                 else if (new Date(t.data_inicio) < new Date() && !t.checkin_real) cor = 'vermelha';
 
-                let txtNomeCurto = isVagaCancelada ? '❌ Vaga Cancelada' : (isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido'));
+                let txtNomeCurto = isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido');
+                if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real)) txtNomeCurto = '⏳ ' + txtNomeCurto;
+                
                 let txt = '';
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
 
-                blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
+                blocosDia.push(`<div class="cal-escala ${cor}" style="cursor:pointer; ${estiloInline}" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();">${txt} (${t.hora_entrada})</div>`);
             });
 
             let hideMobileClass = (blocosDia.length === 0) ? 'empty-pad' : '';
@@ -469,31 +515,25 @@ window.abrirResumoDia = function (dataStr) {
     const turnosDia = dadosEscalas.filter(e => 
         e.data_inicio === dataStr && 
         (funcId ? e.funcionario_id == funcId : true) && 
-        (unidadeId ? e.unidade_id == unidadeId : true)
+        (unidadeId ? e.unidade_id == unidadeId : true) &&
+        e.status_turno !== 'Cancelado' &&
+        e.status_turno !== 'Agendamento Não efetivado'
     );
 
-    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true));
+    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true) && s.status !== 'Cancelado' && s.status !== 'Recusado');
 
     let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
     solsDia.forEach(s => {
         const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
         if (pendentes > 0) {
-            const isExpirado = (s.data_inicio < new Date().toISOString().slice(0, 10)) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
-            const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
-            const corBordaPrincipal = isExpirado ? '#fca5a5' : '#fcd34d';
-            const corBordaEsquerda = isExpirado ? '#ef4444' : '#f59e0b';
-            const corTextoTitulo = isExpirado ? '#991b1b' : '#b45309';
-            const corTextoSecundario = isExpirado ? '#7f1d1d' : '#78350f';
-            const icon = isExpirado ? '❌' : '🛎️';
-
             html += `
-            <div style="background:${corFundo}; border:1px solid ${corBordaPrincipal}; border-left:4px solid ${corBordaEsquerda}; padding:12px; border-radius:6px;">
+            <div style="background:#fffbeb; border:1px solid #fcd34d; border-left:4px solid #f59e0b; padding:12px; border-radius:6px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <b style="color:${corTextoTitulo}; font-size:1.05rem;">${icon} Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
-                        <span style="color:${corTextoSecundario};">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
-                        <small style="color:${corTextoSecundario};">Horário: ${s.hora_entrada} às ${s.hora_saida}</small>
+                        <b style="color:#b45309; font-size:1.05rem;">🛎️ Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
+                        <span style="color:#78350f;">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
+                        <small style="color:#92400e;">Horário: ${s.hora_entrada} às ${s.hora_saida}</small>
                     </div>
                     ${(tipoAcesso !== 'gestor' && dataStr >= new Date().toISOString().slice(0, 10)) ? `<button class="btn-action" style="background:var(--success-color); color:white; font-size:0.8rem; padding:6px 12px;" onclick="document.getElementById('modalVer').style.display='none'; atenderSolicitacaoMagica(${s.id})">🪄 Atender Pedido</button>` : ''}
                 </div>
@@ -506,21 +546,32 @@ window.abrirResumoDia = function (dataStr) {
     }
 
     turnosDia.forEach(t => {
-        let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
-        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
-        let txtNome = isVagaCancelada ? '<span style="color:var(--danger-color);font-weight:bold;">❌ Vaga Não Preenchida</span>' : (isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido'));
+        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
+        let txtNome = isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido');
+        
         let statusInfo = sanitizarTexto(t.status_turno);
         let corBorda = '#cbd5e1'; let corFundo = '#f8fafc';
 
-        if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
-        else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
+        if (t.status_turno === 'Em curso' || (t.checkin_real && !t.checkout_real)) { 
+            statusInfo = 'EM CURSO ⏳'; 
+            corBorda = 'var(--info-color, #0ea5e9)'; 
+            corFundo = '#f0f9ff'; 
+        }
+        else if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
+        else if (t.status_turno === 'Falta') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
         else if (t.status_turno === 'A Aguardar Validação') corBorda = 'var(--warning-color)';
         else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
         else if (isAdefinir) { corBorda = '#f59e0b'; corFundo = '#fffbeb'; }
 
+        // 📍 CORREÇÃO PAUSA: Valida através do log de GPS se a pausa já decorreu ou se é só previsão
+        const gpsLog = t.controlo_gps || '';
+        const fezPausaReal = gpsLog.includes('Pausa Início:');
+
         let pReal = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined)
             ? t.minutos_pausa_realizados + 'm'
             : (t.status_turno === 'Concluído' ? '0m' : '-');
+            
+        if (!fezPausaReal) pReal = '-';
         let txtP = t.tem_pausa ? `(Previsto: ${t.minutos_pausa || 0}m | Real: ${pReal})` : '(Sem pausa)';
 
         html += `
@@ -558,7 +609,6 @@ window.abrirResumoDia = function (dataStr) {
     let dataF = d.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
     abrirVerDetalhes(`📅 Resumo do Dia: ${dataF}`, html);
 };
-
 
 // ==========================================
 // MÓDULO: GESTÃO DE ESCALAS E TURNOS
@@ -617,10 +667,9 @@ async function listarEscalas() {
         const agora = new Date();
         
         if (Array.isArray(todasAsEscalas)) {
-            // Utilizamos um loop for...of para permitir pausas (await) e evitar o Erro 429
-            for (let e of todasAsEscalas) {
-                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
-                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+            todasAsEscalas.forEach(e => {
+                if (e.data_inicio) e.data_inicio = String(e.data_inicio).split('T')[0];
+                if (e.data_fim) e.data_fim = String(e.data_fim).split('T')[0];
                 
                 if (e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno) {
                     if (e.data_inicio && e.hora_entrada) {
@@ -633,27 +682,16 @@ async function listarEscalas() {
                             const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
                             e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
                             try {
-                                await fetch(`/api/escalas/${e.id}`, { 
+                                fetch(`/api/escalas/${e.id}`, { 
                                     method: 'PUT', 
                                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                                    body: JSON.stringify({ 
-                                        unidade_id: e.unidade_id,
-                                        funcionario_id: e.funcionario_id || 'A_DEFINIR',
-                                        funcao: e.funcao,
-                                        data_inicio: e.data_inicio,
-                                        data_fim: e.data_fim,
-                                        hora_entrada: e.hora_entrada,
-                                        hora_saida: e.hora_saida,
-                                        status_turno: e.status_turno 
-                                    }) 
-                                });
-                                // Pausa invisível de 100ms para evitar sobrecarga (Too Many Requests)
-                                await new Promise(r => setTimeout(r, 100)); 
+                                    body: JSON.stringify({ status_turno: e.status_turno }) 
+                                }).catch(()=>{});
                             } catch(err){}
                         }
                     }
                 }
-            }
+            });
         }
 
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
@@ -670,7 +708,6 @@ async function listarEscalas() {
     } catch (e) { console.error("Erro ao listar escalas", e); }
 }
 
-// 📍 GATILHO DA BARRA DE FILTROS INTELIGENTES
 window.aplicarFiltrosEscalas = function() {
     renderizarTabelaEscalas();
 };
@@ -682,16 +719,14 @@ function renderizarTabelaEscalas() {
 
     if (!Array.isArray(dadosEscalas)) return;
 
-    // 📍 1. LER OS VALORES DOS FILTROS DINÂMICOS
     const fCliente = document.getElementById('filtroEscCliente') ? document.getElementById('filtroEscCliente').value : 'ALL';
     const fUnidade = document.getElementById('filtroEscUnidade') ? document.getElementById('filtroEscUnidade').value : 'ALL';
     const fFunc = document.getElementById('filtroEscFunc') ? document.getElementById('filtroEscFunc').value : 'ALL';
 
     let escalasFiltradas = [];
 
-    // 📍 2. FILTRAR POR ABA
     if (window.abaAtivaEscalas === 'pendentes') {
-        escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno);
+        escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno || e.status_turno === 'Em curso');
     } else if (window.abaAtivaEscalas === 'validacao') {
         escalasFiltradas = dadosEscalas.filter(e => e.status_turno === 'A Aguardar Validação');
     } else if (window.abaAtivaEscalas === 'historico') {
@@ -699,7 +734,6 @@ function renderizarTabelaEscalas() {
         escalasFiltradas.sort((a, b) => new Date(b.data_inicio) - new Date(a.data_inicio));
     }
 
-    // 📍 3. APLICAR FILTROS DE SELEÇÃO
     escalasFiltradas = escalasFiltradas.filter(e => {
         let matchFunc = true;
         if (fFunc !== 'ALL') {
@@ -709,17 +743,14 @@ function renderizarTabelaEscalas() {
                 matchFunc = (String(e.funcionario_id) === String(fFunc));
             }
         }
-
         let matchUnid = true;
         if (fUnidade !== 'ALL') {
             matchUnid = (String(e.unidade_id) === String(fUnidade));
         }
-
         let matchCli = true;
         if (fCliente !== 'ALL') {
-            matchCli = (e.nome_empresa === fCliente); // Cruza com a empresa que vem do Join do backend
+            matchCli = (e.nome_empresa === fCliente); 
         }
-
         return matchFunc && matchUnid && matchCli;
     });
 
@@ -731,8 +762,11 @@ function renderizarTabelaEscalas() {
     escalasFiltradas.forEach(e => {
         let statusOriginal = sanitizarTexto(e.status_turno || 'Agendado');
         let txt = statusOriginal;
-        if (e.checkin_real && !e.checkout_real && txt !== 'Falta' && txt !== 'Cancelado' && txt !== 'Agendamento Não efetivado') txt += ' (Em curso)';
-        if (txt === 'Falta' || txt === 'Cancelado' || txt === 'Agendamento Não efetivado') txt = `<span style="color:var(--danger-color);font-weight:bold;">${txt}</span>`;
+        
+        if (e.status_turno === 'Em curso' || (e.checkin_real && !e.checkout_real)) {
+            txt = `<span style="color:var(--info-color, #0ea5e9); font-weight:800; background:#f0f9ff; padding:4px 10px; border-radius:12px; border:1px solid #bae6fd;">EM CURSO ⏳</span>`;
+        }
+        else if (txt === 'Falta' || txt === 'Cancelado' || txt === 'Agendamento Não efetivado') txt = `<span style="color:var(--danger-color);font-weight:bold;">${txt}</span>`;
         else if (txt === 'Concluído') txt = `<span style="color:var(--success-color);font-weight:bold;">${txt}</span>`;
         else if (txt === 'A Aguardar Validação') txt = `<span style="color:var(--warning-color);font-weight:bold;">⏳ ${txt}</span>`;
         else if (txt === 'Pendente') txt = `<span style="color:var(--warning-color);font-weight:bold; background:#fffbeb; padding:2px 8px; border-radius:12px; border:1px dashed #fcd34d;">${txt}</span>`;
@@ -746,6 +780,15 @@ function renderizarTabelaEscalas() {
         if (e.tem_pausa) {
             let pReal = (e.minutos_pausa_realizados !== null && e.minutos_pausa_realizados !== undefined) ? e.minutos_pausa_realizados : '-';
             let flag = e.pausa_status_flag || 'Pendente';
+            
+            // 📍 CORREÇÃO PAUSA: Cruza com os dados do GPS para não mostrar pausas concluídas no futuro
+            const gpsLog = e.controlo_gps || '';
+            const fezPausaReal = gpsLog.includes('Pausa Início:');
+            
+            if (!fezPausaReal) {
+                pReal = '-';
+                flag = 'Pendente';
+            }
 
             let corBadge = '#fef3c7';
             let corTexto = '#b45309';
@@ -757,10 +800,15 @@ function renderizarTabelaEscalas() {
                 corBadge = '#dcfce7'; corTexto = '#166534'; icon = '✅';
             }
 
-            txtPausaPrincipal = `<div style="font-size:0.75rem; color:#64748b; margin-bottom: 2px;">Previsto: <b>${p}</b> min</div>
-                        <span style="color:${corTexto}; font-weight:bold; background:${corBadge}; padding:2px 6px; border-radius:4px; display:inline-block;" title="Status: ${flag}">
-                        ${icon} Real: <b>${pReal}</b> min
-                        </span>`;
+            if (!fezPausaReal && (e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado')) {
+                txtPausaPrincipal = '-';
+            } else {
+                let suffix = pReal !== '-' ? ' min' : '';
+                txtPausaPrincipal = `<div style="font-size:0.75rem; color:#64748b; margin-bottom: 2px;">Previsto: <b>${p}</b> min</div>
+                            <span style="color:${corTexto}; font-weight:bold; background:${corBadge}; padding:2px 6px; border-radius:4px; display:inline-block;" title="Status: ${flag}">
+                            ${icon} Real: <b>${pReal}</b>${suffix}
+                            </span>`;
+            }
         }
 
         let botoesAcao = `<button class="btn-small btn-view" onclick="verEscala(${e.id})">👁</button>`;
@@ -832,9 +880,13 @@ function abrirValidacaoPonto(id) {
     let isAdefinir = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
     let txtNome = isAdefinir ? '⏳ A Definir' : (sanitizarTexto(e.nome_func) || 'Desconhecido');
 
-    const pReal = (e.minutos_pausa_realizados !== null && e.minutos_pausa_realizados !== undefined)
+    const gpsLog = e.controlo_gps || '';
+    const fezPausaReal = gpsLog.includes('Pausa Início:');
+    let pReal = (e.minutos_pausa_realizados !== null && e.minutos_pausa_realizados !== undefined)
         ? e.minutos_pausa_realizados + 'm'
         : (e.status_turno === 'Concluído' ? '0m' : '-');
+        
+    if (!fezPausaReal) pReal = '-';
     let txtP = e.tem_pausa ? `Prev: ${p}m | Real: ${pReal}` : '0 min';
 
     document.getElementById('conteudoValidacaoPonto').innerHTML = `<div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Trabalhador:</span> <b>${txtNome}</b></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Função:</span> <b>${sanitizarTexto(e.funcao)}</b></div><div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #cbd5e1; padding-bottom:5px;"><span>Data do Serviço:</span> <b>${e.data_inicio}</b></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Entrada Registada:</span> <b style="color:var(--primary-color)">${sanitizarTexto(e.checkin_real) || '-'}</b></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Saída Registada:</span> <b style="color:var(--danger-color)">${sanitizarTexto(e.checkout_real) || '-'}</b></div><div style="display:flex; justify-content:space-between;"><span>Pausa Descontada:</span> <b style="color:var(--warning-color)">${txtP}</b></div></div>`;
@@ -869,9 +921,13 @@ function verEscala(id) {
     let isAdefinir = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
     let txtNome = isVagaCancelada ? '❌ Vaga Não Preenchida' : (isAdefinir ? '⏳ A Definir (Turno em Aberto)' : (sanitizarTexto(e.nome_func) || 'Desconhecido'));
 
-    const pReal = (e.minutos_pausa_realizados !== null && e.minutos_pausa_realizados !== undefined)
+    const gpsLog = e.controlo_gps || '';
+    const fezPausaReal = gpsLog.includes('Pausa Início:');
+    let pReal = (e.minutos_pausa_realizados !== null && e.minutos_pausa_realizados !== undefined)
         ? e.minutos_pausa_realizados + 'm'
         : (e.status_turno === 'Concluído' ? '0m' : '-');
+        
+    if (!fezPausaReal) pReal = '-';
     let txtP = e.tem_pausa ? `Previsto: ${p}m | Real: ${pReal}` : 'Não';
 
     abrirVerDetalhes("Detalhes", `<b>Trabalhador:</b> ${txtNome}<br><b>Local:</b> ${sanitizarTexto(e.nome_unidade)}<br><b>Pausa:</b> ${txtP}<br><b>Check-in:</b> ${sanitizarTexto(e.checkin_real) || '-'}<br><b>Check-out:</b> ${sanitizarTexto(e.checkout_real) || '-'}${htmlObs}`);
@@ -894,23 +950,20 @@ function toggleMultiplo() {
     if (wrapper) { if (multi) wrapper.classList.add('active'); else wrapper.classList.remove('active'); }
 }
 
-
 function editarEscala(id) {
     const e = dadosEscalas.find(x => x.id === id); if (!e) return;
     const p = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
-
-    if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = e.id;
-    if(document.getElementById('escUnidade')) document.getElementById('escUnidade').value = e.unidade_id;
-    if(document.getElementById('escFunc')) document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
-    if(document.getElementById('escFuncao')) document.getElementById('escFuncao').value = e.funcao;
-    if(document.getElementById('escDataIn')) document.getElementById('escDataIn').value = e.data_inicio;
-    if(document.getElementById('escHoraIn')) document.getElementById('escHoraIn').value = e.hora_entrada;
-    if(document.getElementById('escHoraOut')) document.getElementById('escHoraOut').value = e.hora_saida;
+    document.getElementById('escIdEdit').value = e.id;
+    document.getElementById('escUnidade').value = e.unidade_id;
+    document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
+    document.getElementById('escFuncao').value = e.funcao;
+    document.getElementById('escDataIn').value = e.data_inicio;
+    document.getElementById('escHoraIn').value = e.hora_entrada;
+    document.getElementById('escHoraOut').value = e.hora_saida;
 
     if (e.tem_pausa) {
-        if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = true;
-        if(document.getElementById('escMinutos')) document.getElementById('escMinutos').value = p;
-        
+        document.getElementById('escPausa').checked = true;
+        document.getElementById('escMinutos').value = p;
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
         
@@ -925,67 +978,54 @@ function editarEscala(id) {
         if (inInput) inInput.value = extrairLiteral(e.timestamp_inicio_pausa) || extrairLiteral(e.hora_inicio_pausa) || '';
         if (fimInput) fimInput.value = extrairLiteral(e.timestamp_fim_pausa) || extrairLiteral(e.hora_fim_pausa) || '';
     } else {
-        if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = false;
-        if(document.getElementById('escMinutos')) document.getElementById('escMinutos').value = 0;
-        if(document.getElementById('escHoraInicioPausa')) document.getElementById('escHoraInicioPausa').value = '';
-        if(document.getElementById('escHoraFimPausa')) document.getElementById('escHoraFimPausa').value = '';
+        document.getElementById('escPausa').checked = false;
+        document.getElementById('escMinutos').value = 0;
+        const inInput = document.getElementById('escHoraInicioPausa');
+        const fimInput = document.getElementById('escHoraFimPausa');
+        if (inInput) inInput.value = '';
+        if (fimInput) fimInput.value = '';
     }
-    
-    if(typeof togglePausaEsc === 'function') togglePausaEsc();
+    togglePausaEsc();
 
-    if(document.getElementById('linhaAgendamentoMultiplo')) document.getElementById('linhaAgendamentoMultiplo').style.display = 'none';
-    if(document.getElementById('linhaAcertoManual')) document.getElementById('linhaAcertoManual').style.display = 'block';
-    
+    document.getElementById('linhaAgendamentoMultiplo').style.display = 'none';
+    document.getElementById('linhaAcertoManual').style.display = 'block';
     const boxObs = document.getElementById('boxObsCliente');
-    if (boxObs) {
-        if (e.obs_cliente) { 
-            if(document.getElementById('lblObsCliente')) document.getElementById('lblObsCliente').innerText = `"${e.obs_cliente}"`; 
-            boxObs.style.display = 'block'; 
-        } else { 
-            boxObs.style.display = 'none'; 
-        }
-    }
-    
-    if(document.getElementById('escStatus')) document.getElementById('escStatus').value = e.status_turno || 'Agendado';
-    if(document.getElementById('escCheckinReal')) document.getElementById('escCheckinReal').value = e.checkin_real || '';
-    if(document.getElementById('escCheckoutReal')) document.getElementById('escCheckoutReal').value = e.checkout_real || '';
-    if(document.getElementById('btnSalvarEscala')) document.getElementById('btnSalvarEscala').innerText = 'Gravar Acerto do Turno';
-    if(document.getElementById('btnCancelarEscala')) document.getElementById('btnCancelarEscala').style.display = 'inline-block';
-    
-    if(typeof destacarFormulario === 'function') destacarFormulario('formEscala');
+    if (e.obs_cliente) { document.getElementById('lblObsCliente').innerText = `"${e.obs_cliente}"`; boxObs.style.display = 'block'; } else { boxObs.style.display = 'none'; }
+    document.getElementById('escStatus').value = e.status_turno || 'Agendado';
+    document.getElementById('escCheckinReal').value = e.checkin_real || '';
+    document.getElementById('escCheckoutReal').value = e.checkout_real || '';
+    document.getElementById('btnSalvarEscala').innerText = 'Gravar Acerto do Turno';
+    document.getElementById('btnCancelarEscala').style.display = 'inline-block';
+    destacarFormulario('formEscala');
 }
 
 function cancelarEdicaoEscala() {
-    if(typeof removerDestaqueFormulario === 'function') removerDestaqueFormulario();
-    const form = document.getElementById('formEscala');
-    if (form) form.reset();
-    
-    if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = '';
-    if(document.getElementById('linhaAcertoManual')) document.getElementById('linhaAcertoManual').style.display = 'none';
+    removerDestaqueFormulario();
+    document.getElementById('formEscala').reset();
+    document.getElementById('escIdEdit').value = '';
+    document.getElementById('linhaAcertoManual').style.display = 'none';
 
-    if(document.getElementById('escMultiplo')) document.getElementById('escMultiplo').checked = false;
-    if(typeof toggleMultiplo === 'function') toggleMultiplo();
-    
-    if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = false;
-    if(document.getElementById('escHoraInicioPausa')) document.getElementById('escHoraInicioPausa').value = '';
-    if(document.getElementById('escHoraFimPausa')) document.getElementById('escHoraFimPausa').value = '';
-    if(typeof togglePausaEsc === 'function') togglePausaEsc();
+    document.getElementById('escMultiplo').checked = false;
+    toggleMultiplo();
+    document.getElementById('escPausa').checked = false;
+    const inInput = document.getElementById('escHoraInicioPausa');
+    const fimInput = document.getElementById('escHoraFimPausa');
+    if (inInput) inInput.value = '';
+    if (fimInput) fimInput.value = '';
+    togglePausaEsc();
 
-    if(document.getElementById('escStatus')) document.getElementById('escStatus').value = 'Agendado';
-    if(document.getElementById('boxObsCliente')) document.getElementById('boxObsCliente').style.display = 'none';
-    if(document.getElementById('btnSalvarEscala')) document.getElementById('btnSalvarEscala').innerText = 'Confirmar Agendamento';
-    if(document.getElementById('btnCancelarEscala')) document.getElementById('btnCancelarEscala').style.display = 'none';
-    
-    if (typeof magicSolId !== 'undefined' && magicSolId) {
-        if(typeof atualizarUIMagica === 'function') atualizarUIMagica();
+    document.getElementById('escStatus').value = 'Agendado';
+    document.getElementById('boxObsCliente').style.display = 'none';
+    document.getElementById('btnSalvarEscala').innerText = 'Confirmar Agendamento';
+    document.getElementById('btnCancelarEscala').style.display = 'none';
+    if (magicSolId) {
+        atualizarUIMagica();
+        removerDestaqueFormulario();
     } else {
-        const linhaAg = document.getElementById('linhaAgendamentoMultiplo');
-        if(linhaAg) {
-            linhaAg.style.display = 'block';
-            linhaAg.style.border = '1px solid #e2e8f0';
-            linhaAg.style.background = '#f8fafc';
-        }
-        if(document.getElementById('bannerMagico')) document.getElementById('bannerMagico').style.display = 'none';
+        document.getElementById('linhaAgendamentoMultiplo').style.display = 'block';
+        document.getElementById('bannerMagico').style.display = 'none';
+        document.getElementById('linhaAgendamentoMultiplo').style.border = '1px solid #e2e8f0';
+        document.getElementById('linhaAgendamentoMultiplo').style.background = '#f8fafc';
     }
 }
 
@@ -1021,8 +1061,8 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             const dataTurno = document.getElementById('escDataIn').value;
             baseDados.data_inicio = dataTurno;
             baseDados.data_fim = dataTurno;
-            baseDados.checkin_real = document.getElementById('escCheckinReal') ? document.getElementById('escCheckinReal').value : null;
-            baseDados.checkout_real = document.getElementById('escCheckoutReal') ? document.getElementById('escCheckoutReal').value : null;
+            baseDados.checkin_real = document.getElementById('escCheckinReal').value || null;
+            baseDados.checkout_real = document.getElementById('escCheckoutReal').value || null;
             baseDados.status_turno = document.getElementById('escStatus') ? document.getElementById('escStatus').value : 'Agendado';
             
             baseDados.timestamp_inicio_pausa = vInicio ? `${dataTurno}T${vInicio}:00` : null;
@@ -1163,7 +1203,10 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
                 listarEscalas();
             }
         }
-    } catch (err) { alert("Erro de comunicação com o servidor."); }
+    } catch (err) { 
+        console.error("Erro no formulário de escala:", err);
+        alert("Erro de comunicação com o servidor. Consulte a consola (F12) para detalhes."); 
+    }
     btn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
     btn.disabled = false;
 });
