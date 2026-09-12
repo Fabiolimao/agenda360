@@ -165,9 +165,11 @@ function processarFiltroRelatorio() {
         if (e.status_turno === 'Concluído') corStatus = 'color:var(--success-color);';
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') corStatus = 'color:var(--danger-color);';
 
+        // 📍 CORREÇÃO DA PAUSA FANTASMA NO EXTRATO: Força o bloqueio de horas e pausas na falta
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') {
             txtHoras = '<span style="color:var(--danger-color); font-weight:bold;">00:00 h</span>';
             estiloLinha = 'style="background: #fef2f2;"';
+            txtPausa = '-';
         } else if (e.status_turno === 'Concluído' && (!e.checkin_real || !e.checkout_real)) {
             txtHoras = '<span style="color:var(--danger-color); font-weight:bold;">⚠️ Ajuste</span>';
             estiloLinha = 'style="background: #fffbeb;"';
@@ -328,7 +330,10 @@ window.gerarGrelhaMensal = async function() {
                 var dtObj = new Date(ano, mes - 1, d.dia);
                 var diaSemana = nomesDias[dtObj.getDay()];
                 var bgRow = (dtObj.getDay() === 0 || dtObj.getDay() === 6) ? 'background: #f1f5f9;' : '';
+                
+                // 📍 CORREÇÃO: Destacar faltas e folgas, e limpar o background base
                 if (d.tipo === 'F') bgRow = 'background: #fff1f2; color: #e11d48;'; 
+                if (d.tipo === 'Falta' || d.tipo === 'Cancelado') bgRow = 'background: #fef2f2; color: #dc2626;';
                 
                 totNormais += d.horas_normais || 0;
                 totNoturnas += d.horas_noturnas || 0;
@@ -339,7 +344,9 @@ window.gerarGrelhaMensal = async function() {
                 if (d.detalhe === '-') detalheFormatado = (d.tipo === 'F') ? 'Folga' : d.tipo;
 
                 var txtPausa = '00:00';
-                if (d.tipo !== 'F' && d.detalhe && d.detalhe.indexOf('-') !== -1) {
+                
+                // 📍 CORREÇÃO: Prevenir cálculo de pausas fantasma
+                if (d.tipo !== 'F' && d.tipo !== 'Falta' && d.tipo !== 'Cancelado' && d.detalhe && d.detalhe.indexOf('-') !== -1) {
                     var pts = d.detalhe.split('-');
                     if (pts.length === 2) {
                         var inParts = pts[0].trim().split(':');
@@ -357,18 +364,17 @@ window.gerarGrelhaMensal = async function() {
                             if (p > 0) {
                                 var ph = Math.floor(p / 60);
                                 var pm = p % 60;
-                                var phs = String(ph);
-                                var pms = String(pm);
-                                if (phs.length < 2) phs = '0' + phs;
-                                if (pms.length < 2) pms = '0' + pms;
+                                var phs = String(ph).padStart(2, '0');
+                                var pms = String(pm).padStart(2, '0');
                                 txtPausa = phs + ':' + pms;
                             }
                         }
                     }
-                } else if (d.tipo === 'F') { txtPausa = '-'; }
+                } else {
+                    txtPausa = '-';
+                }
 
-                var dDiaStr = String(d.dia);
-                if (dDiaStr.length < 2) dDiaStr = '0' + dDiaStr;
+                var dDiaStr = String(d.dia).padStart(2, '0');
 
                 linhasTabela += '<tr style="border-bottom: 1px solid #cbd5e1; ' + bgRow + '">' +
                     '<td style="padding: 4px; font-weight: bold; text-align: center; border: 1px solid #cbd5e1;">' + dDiaStr + ' (' + diaSemana + ')</td>' +
@@ -407,8 +413,7 @@ window.gerarGrelhaMensal = async function() {
             var empresa = grupo.empresa || 'N/D';
             var unidade = grupo.unidade || 'N/D';
             var funcao = grupo.funcao || 'N/D';
-            var mesStr = String(mes);
-            if (mesStr.length < 2) mesStr = '0' + mesStr;
+            var mesStr = String(mes).padStart(2, '0');
 
             conteudoHTML += '' +
                 '<div class="act-page-break" style="padding: 1.5cm; box-sizing: border-box;">' +
@@ -529,6 +534,7 @@ function exportarExcelRelatorio() {
     link.click(); 
     document.body.removeChild(link); 
 }
+
 // ==========================================
 // MÓDULO: MAPA SEMANAL DE ESCALAS
 // ==========================================

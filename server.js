@@ -24,6 +24,20 @@ const PORT = process.env.PORT || 3005;
 app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (req, res) => {
     try {
         const { id, ano, mes } = req.params;
+
+        // 📍 BLINDAGEM DO TRABALHADOR: Só pode ver a folha se o gestor já a tiver gerado
+        if (req.user.tipo === 'trabalhador') {
+            const checkAssinatura = await pool.query(
+                `SELECT id FROM assinaturas_mensais WHERE funcionario_id = $1 AND mes = $2 AND ano = $3 LIMIT 1`,
+                [id, mes, ano]
+            );
+            if (checkAssinatura.rows.length === 0) {
+                return res.status(403).json({
+                    sucesso: false,
+                    erro: 'Folha em processamento. Aguarde a emissão oficial e validação por parte do seu Gestor.'
+                });
+            }
+        }
         
         // 1. Número de dias no mês
         const numDias = new Date(ano, mes, 0).getDate();
@@ -95,36 +109,48 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
             const diaNum = d.getDate();
             
             let tipo = 'T'; // Trabalho
-            if (r.status_turno === 'Falta' || r.status_turno === 'Cancelado') tipo = 'Falta';
             if (r.tipo_ausencia) tipo = r.tipo_ausencia;
+            if (r.status_turno === 'Falta') tipo = 'Falta';
+            if (r.status_turno === 'Cancelado') tipo = 'Cancelado';
             
             let previsto = 0;
             let efetivo = 0;
             let noturno = 0;
             let extra = 0;
             let normal = 0;
+            let detalheStr = `${r.checkin_real || r.hora_entrada} - ${r.checkout_real || r.hora_saida}`;
             
-            if (r.hora_entrada && r.hora_saida) {
-                previsto = calcDiffMin(parseTime(r.hora_entrada), parseTime(r.hora_saida));
-            }
-            
-            if (r.status_turno === 'Concluído' || r.status_turno === 'Validado') {
-                const startStr = r.checkin_real || r.hora_entrada;
-                const endStr = r.checkout_real || r.hora_saida;
+            // 📍 A GUILHOTINA MATEMÁTICA: Corta o cálculo fantasma em dias de falta ou ausência
+            if (tipo === 'Falta' || tipo === 'Cancelado' || (r.tipo_ausencia && r.tipo_ausencia !== 'T')) {
+                detalheStr = tipo.toUpperCase(); 
+                previsto = 0;
+                efetivo = 0;
+                normal = 0;
+                noturno = 0;
+                extra = 0;
+            } else {
+                if (r.hora_entrada && r.hora_saida) {
+                    previsto = calcDiffMin(parseTime(r.hora_entrada), parseTime(r.hora_saida));
+                }
                 
-                if (startStr && endStr) {
-                    const startMin = parseTime(startStr);
-                    const endMin = parseTime(endStr);
+                if (r.status_turno === 'Concluído' || r.status_turno === 'Validado') {
+                    const startStr = r.checkin_real || r.hora_entrada;
+                    const endStr = r.checkout_real || r.hora_saida;
                     
-                    efetivo = calcDiffMin(startMin, endMin);
-                    noturno = calcNoturno(startMin, endMin);
-                    
-                    if (efetivo > previsto && previsto > 0) {
-                        extra = efetivo - previsto;
+                    if (startStr && endStr) {
+                        const startMin = parseTime(startStr);
+                        const endMin = parseTime(endStr);
+                        
+                        efetivo = calcDiffMin(startMin, endMin);
+                        noturno = calcNoturno(startMin, endMin);
+                        
+                        if (efetivo > previsto && previsto > 0) {
+                            extra = efetivo - previsto;
+                        }
+                        
+                        normal = efetivo - noturno;
+                        if (normal < 0) normal = 0;
                     }
-                    
-                    normal = efetivo - noturno;
-                    if (normal < 0) normal = 0;
                 }
             }
             
@@ -141,7 +167,7 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
                 horas_normais: parseFloat((normal / 60).toFixed(2)),
                 horas_noturnas: parseFloat((noturno / 60).toFixed(2)),
                 horas_extra: parseFloat((extra / 60).toFixed(2)),
-                detalhe: `${r.checkin_real || r.hora_entrada} - ${r.checkout_real || r.hora_saida}`
+                detalhe: detalheStr
             });
         });
         
@@ -210,19 +236,15 @@ if (!fs.existsSync(path.join(__dirname, 'backups'))) {
 
 // 📍 CORREÇÃO CORS: Inclusão obrigatória de ambas as versões do domínio para destrancar a App e o Painel
 const dominiosPermitidos = [
-    process.env.URL_OFICIAL,
-    'https://agenda360.pt',
-    'https://www.agenda360.pt',
+    process.env.URL_OFICIAL, 
+    'https://agenda360.pt', 
+    'https://www.agenda360.pt', 
     'http://localhost:3005'
 ];
-
 app.use(cors({ 
     origin: function (origin, callback) {
-        if (!origin || dominiosPermitidos.includes(origin)) { 
-            callback(null, true); 
-        } else { 
-            callback(new Error('Acesso Bloqueado pela Política CORS de Segurança')); 
-        }
+        if (!origin || dominiosPermitidos.includes(origin)) { callback(null, true); } 
+        else { callback(new Error('Acesso Bloqueado pela Política CORS de Segurança')); }
     }
 }));
 
@@ -312,7 +334,6 @@ async function criarTabelas() {
         try { await pool.query(`ALTER TABLE funcionarios ADD COLUMN disponibilidade TEXT`); } catch(e) { }
         try { await pool.query(`ALTER TABLE funcionarios ADD COLUMN data_inativacao TEXT DEFAULT NULL`); } catch(e) { } 
 
-        // ORDEM CORRIGIDA: solicitacoes_extra é criada antes das escalas
         await pool.query(`CREATE TABLE IF NOT EXISTS solicitacoes_extra (id SERIAL PRIMARY KEY, agencia_id INTEGER REFERENCES agencias(id) ON DELETE CASCADE, unidade_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE, funcao TEXT, data_inicio TEXT, hora_entrada TEXT, hora_saida TEXT, quantidade INTEGER, tem_pausa INTEGER DEFAULT 0, minutos_pausa INTEGER DEFAULT 0, status TEXT DEFAULT 'Pendente', data_pedido TEXT)`);
 
         await pool.query(`CREATE TABLE IF NOT EXISTS escalas (id SERIAL PRIMARY KEY, unidade_id INTEGER REFERENCES unidades(id) ON DELETE CASCADE, funcionario_id INTEGER REFERENCES funcionarios(id) ON DELETE CASCADE, funcao VARCHAR(255), data_inicio DATE, hora_entrada TIME, data_fim DATE, hora_saida TIME, tem_pausa INTEGER DEFAULT 0, timestamp_inicio_pausa TIMESTAMPTZ DEFAULT NULL, timestamp_fim_pausa TIMESTAMPTZ DEFAULT NULL, enviar_sms INTEGER DEFAULT 0, checkin_real VARCHAR(50) DEFAULT NULL, checkout_real VARCHAR(50) DEFAULT NULL, status_turno VARCHAR(50) DEFAULT 'Agendado', controlo_gps TEXT DEFAULT 'Não verificado', solicitacao_id INTEGER REFERENCES solicitacoes_extra(id) ON DELETE SET NULL, validado_cliente INTEGER DEFAULT 0, obs_cliente TEXT DEFAULT NULL, horas_normais NUMERIC(5,2) DEFAULT 0.00, horas_noturnas NUMERIC(5,2) DEFAULT 0.00, horas_extras NUMERIC(5,2) DEFAULT 0.00, tipo_ausencia VARCHAR(50) DEFAULT NULL)`);
@@ -976,8 +997,7 @@ app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => {
             
             if (diffMinutos > 15) return res.status(403).json({ erro: 'Só pode registar a entrada 15 minutos antes da hora prevista.' }); 
             
-            // 📍 CORREÇÃO AQUI: Atualizamos também o status_turno para 'Em curso' na BD
-            db.run(`UPDATE escalas SET checkin_real = ?, controlo_gps = ?, status_turno = 'Em curso' WHERE id = ?`, [horaPT, 'Entrada: ' + txtGps, parseInt(escala_id, 10)], errUpdate => { 
+            db.run(`UPDATE escalas SET checkin_real = ?, controlo_gps = ? WHERE id = ?`, [horaPT, 'Entrada: ' + txtGps, parseInt(escala_id, 10)], errUpdate => { 
                 if(errUpdate) return res.status(500).json({ erro: 'Falha ao atualizar base de dados.' }); 
                 res.json({ mensagem: 'Registado!' }); 
             }); 

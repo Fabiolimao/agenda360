@@ -95,7 +95,7 @@ function gerarRelatorioApp() {
                 }
             }
 
-            // 📍 ESTRUTURA PADRONIZADA DE PREVISTO VS REALIZADO (Turno e Pausa)
+            // 📍 ESTRUTURA PADRONIZADA DE PREVISTO VS REALIZADO
             const gpsLog = e.controlo_gps || ''; 
             const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa) || isPausaReal(e.hora_inicio_pausa);
             const hasFimPausa = isPausaReal(e.timestamp_fim_pausa) || isPausaReal(e.hora_fim_pausa);
@@ -141,19 +141,19 @@ function gerarRelatorioApp() {
                 </div>
             `;
 
-            // 📍 ETIQUETAS OFICIAIS DO RELATÓRIO
+            // 📍 ETIQUETAS INTELIGENTES DO RELATÓRIO
             let corStatus = 'color:var(--warning-color)';
-            let lblStatus = e.status_turno;
+            let lblStatus = (typeof e.status_turno === 'string') ? e.status_turno.toUpperCase() : 'AGENDADO';
             
-            if (lblStatus === 'Concluído' || lblStatus === 'A Aguardar Validação') { 
+            if (e.status_turno === 'Concluído' || e.status_turno === 'A Aguardar Validação') { 
                 corStatus = 'color:var(--success-color)'; 
-                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_done']) ? dic[curLang]['lbl_done'] : 'Concluído'; 
-            } else if (lblStatus === 'Falta' || lblStatus === 'Cancelado') { 
+                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_done']) ? dic[curLang]['lbl_done'].toUpperCase() : 'CONCLUÍDO'; 
+            } else if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') { 
                 corStatus = 'color:var(--danger-color)'; 
-                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_missed']) ? dic[curLang]['lbl_missed'] : 'Falta'; 
-            } else if (lblStatus === 'Em curso' || (e.checkin_real && !e.checkout_real)) { 
+                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_missed']) ? dic[curLang]['lbl_missed'].toUpperCase() : 'FALTA'; 
+            } else if (e.status_turno === 'Em curso' || (e.checkin_real && !e.checkout_real)) { 
                 corStatus = 'color:var(--info-color, #0ea5e9); font-weight:800;'; 
-                lblStatus = 'Em curso ⏳'; 
+                lblStatus = 'EM CURSO ⏳'; 
             }
 
             htmlContainerCartoes += `
@@ -162,7 +162,7 @@ function gerarRelatorioApp() {
                         <div class="rep-data">📅 Dia ${e.data_inicio.split('-')[2]} (${e.data_inicio})</div>
                         <div class="rep-loc"><b>Local:</b> ${e.nome_unidade} | <b>Função:</b> ${e.funcao}</div>
                         ${painelPadraoHTML}
-                        <div class="rep-status" style="${corStatus}; margin-top: 5px;">Estado: ${lblStatus}</div>
+                        <div class="rep-status" style="${corStatus}; margin-top: 5px;">ESTADO: ${lblStatus}</div>
                     </div>
                     <div class="rep-horas">${txtLinhaHoras}</div>
                 </div>
@@ -486,20 +486,36 @@ async function testarFolhaACT() {
         var mes = document.getElementById('actMesFiltro').value;
         var ano = document.getElementById('actAnoFiltro').value;
         var btn = document.querySelector('button[onclick="testarFolhaACT()"]');
-        if (btn) btn.innerText = 'A Calcular...';
+        if (btn) btn.innerText = 'A Verificar Servidor... ⏳';
         
         var res = await fetch('/api/folha-ponto/trabalhador/' + meuId + '/' + ano + '/' + mes, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         
         var dados = await res.json();
+        var box = document.getElementById('boxTesteACT');
         
+        // 📍 A TRANCA DO GESTOR: Se o servidor devolver 403, bloqueia a vista e mostra o aviso.
+        if (!res.ok) {
+            if (box) {
+                box.style.display = 'block';
+                box.innerHTML = `
+                    <div style="background:white; padding:40px 30px; border-radius:16px; border:2px solid var(--warning-color); text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.05);">
+                        <span style="font-size:4rem; display:block; margin-bottom:15px;">🔒</span>
+                        <h2 style="color:var(--warning-color); font-weight:800; letter-spacing:-1px; margin-bottom:10px;">FOLHA PROTEGIDA</h2>
+                        <p style="color:#475569; margin-bottom:0; font-size:1.1rem; line-height:1.5;">${dados.erro || 'O Gestor ainda não disponibilizou o documento oficial deste mês para assinatura.'}</p>
+                    </div>`;
+            }
+            if (btn) btn.innerText = '📊 Gerar Folha ACT';
+            return;
+        }
+        
+        // Se passou a tranca, carrega as assinaturas para ver se já assinou
         var resAss = await fetch('/api/assinaturas/funcionario/' + meuId, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         var assinaturasWorker = resAss.ok ? await resAss.json() : [];
 
-        var box = document.getElementById('boxTesteACT');
         if (box) {
             box.style.display = 'block';
             box.style.background = 'transparent';
@@ -507,10 +523,10 @@ async function testarFolhaACT() {
             box.style.color = 'inherit';
             
             if (!dados.agrupamentos || dados.agrupamentos.length === 0) {
-                box.innerHTML = '<div style="padding: 20px; text-align:center; color:#64748b;">Nenhum registo encontrado neste per\u00edodo.</div>';
+                box.innerHTML = '<div style="padding: 20px; text-align:center; color:#64748b;">Nenhum registo encontrado neste período.</div>';
             } else {
                 var htmlTudo = '';
-                var nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00e1b'];
+                var nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
                 var funcNome = localStorage.getItem('agenda360_func_nome') || 'Trabalhador';
                 
                 dados.agrupamentos.forEach(function(grupo, index) {
@@ -528,17 +544,16 @@ async function testarFolhaACT() {
                     var nomeAgencia = grupo.empresa || 'N/D';
                     var nomeCliente = grupo.unidade || 'N/D';
                     var nomeFuncionario = funcNome;
-                    var mesStr = String(dados.mes);
-                    if (mesStr.length < 2) mesStr = '0' + mesStr;
+                    var mesStr = String(dados.mes).padStart(2, '0');
                     var mesAno = mesStr + ' / ' + dados.ano;
 
                     htmlTudo += '<div id="folha-isolada-' + index + '" class="bloco-folha-act">';
                     
                     htmlTudo += '<div class="no-print" style="margin-bottom: 15px; text-align: right;">' +
-                        '<button class="btn-main" style="background: #0ea5e9; color: white; margin-right: 10px;" onclick="imprimirFolhaIsolada(\'folha-isolada-' + index + '\')">\uD83D\uDDA8\uFE0F Imprimir PDF</button>';
+                        '<button class="btn-main" style="background: #0ea5e9; color: white; margin-right: 10px;" onclick="imprimirFolhaIsolada(\'folha-isolada-' + index + '\')">🖨️ Imprimir PDF Oficial</button>';
                     
                     if (!assinaturaAtiva) {
-                        var l_btn_sign = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['btn_sign_unit']) ? dic[curLang]['btn_sign_unit'] : '\u270D\uFE0F Assinar Digitalmente esta Unidade';
+                        var l_btn_sign = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['btn_sign_unit']) ? dic[curLang]['btn_sign_unit'] : '✍️ Assinar Digitalmente esta Unidade';
                         htmlTudo += '<button class="btn-main" style="background: #10b981; color: white;" onclick="assinarUnidade(' + dados.mes + ', ' + dados.ano + ', ' + grupo.cliente_id + ', ' + grupo.unidade_id + ')">' + l_btn_sign + '</button>';
                     }
                     htmlTudo += '</div>';
@@ -556,21 +571,21 @@ async function testarFolhaACT() {
 
                     var dataEmissao = new Date().toLocaleDateString('pt-PT');
                     htmlTudo += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">' +
-                        '<img src="/logo_agenda_360.jpeg" style="max-height: 60px; width: auto;">' +
+                        '<img src="/logo_agenda_360.jpeg" style="max-height: 60px; width: auto;" onerror="this.style.display=\'none\'">' +
                         '<span style="font-size: 12px; font-weight: bold;">Emitido em: ' + dataEmissao + '</span>' +
                         '</div>';
 
                     htmlTudo += '<div style="background:#f1f5f9; padding:10px; border:1px solid #cbd5e1; margin-bottom:10px;">' +
                         '<strong>ENTIDADE EMPREGADORA:</strong> ' + nomeAgencia + '<br>' +
                         '<strong>LOCAL DE TRABALHO:</strong> ' + nomeCliente + '<br>' +
-                        '<strong>TRABALHADOR:</strong> ' + nomeFuncionario + ' | <strong>PER\u00cdODO:</strong> ' + mesAno +
+                        '<strong>TRABALHADOR:</strong> ' + nomeFuncionario + ' | <strong>PERÍODO:</strong> ' + mesAno +
                         '</div>';
 
                     htmlTudo += '<table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed;">' +
                         '<thead>' +
                         '<tr style="background:#e2e8f0;">' +
                         '<th style="border:1px solid #cbd5e1; padding:4px; width:18%;">DIA</th>' +
-                        '<th style="border:1px solid #cbd5e1; padding:4px; width:26%;">ENTRADA / SA\u00cdDA</th>' +
+                        '<th style="border:1px solid #cbd5e1; padding:4px; width:26%;">ENTRADA / SAÍDA</th>' +
                         '<th style="border:1px solid #cbd5e1; padding:4px; width:14%;">PAUSA</th>' +
                         '<th style="border:1px solid #cbd5e1; padding:4px; width:14%;">H. NORMAIS</th>' +
                         '<th style="border:1px solid #cbd5e1; padding:4px; width:14%;">H. NOTURNAS</th>' +
@@ -586,7 +601,10 @@ async function testarFolhaACT() {
                         var dtObj = new Date(dados.ano, dados.mes - 1, d.dia);
                         var diaSemana = nomesDias[dtObj.getDay()];
                         var bgRow = (dtObj.getDay() === 0 || dtObj.getDay() === 6) ? 'background: #f1f5f9;' : '';
+                        
+                        // 📍 NOVA LÓGICA DE APRESENTAÇÃO: Apenas lê o que o Servidor mandou
                         if (d.tipo === 'F') bgRow = 'background: #fff1f2; color: #e11d48;'; 
+                        if (d.tipo === 'Falta' || d.tipo === 'Cancelado') bgRow = 'background: #fef2f2; color: #dc2626;';
                         
                         totNormais += d.horas_normais || 0;
                         totNoturnas += d.horas_noturnas || 0;
@@ -597,7 +615,9 @@ async function testarFolhaACT() {
                         if (d.detalhe === '-') detalheFormatado = (d.tipo === 'F') ? 'Folga' : d.tipo;
 
                         var txtPausa = '00:00';
-                        if (d.tipo !== 'F' && d.detalhe && d.detalhe.indexOf('-') !== -1) {
+                        
+                        // 📍 CORREÇÃO DA "PAUSA FANTASMA": Só calcula pausa local se for Turno Normal
+                        if (d.tipo !== 'F' && d.tipo !== 'Falta' && d.tipo !== 'Cancelado' && d.detalhe && d.detalhe.indexOf('-') !== -1) {
                             var pts = d.detalhe.split('-');
                             if (pts.length === 2) {
                                 var inParts = pts[0].trim().split(':');
@@ -615,32 +635,25 @@ async function testarFolhaACT() {
                                     if (p > 0) {
                                         var ph = Math.floor(p / 60);
                                         var pm = p % 60;
-                                        var phs = String(ph);
-                                        var pms = String(pm);
-                                        if (phs.length < 2) phs = '0' + phs;
-                                        if (pms.length < 2) pms = '0' + pms;
+                                        var phs = String(ph).padStart(2, '0');
+                                        var pms = String(pm).padStart(2, '0');
                                         txtPausa = phs + ':' + pms;
                                     }
                                 }
                             }
-                        } else if (d.tipo === 'F') { txtPausa = '-'; }
+                        } else {
+                            txtPausa = '-';
+                        }
 
                         var formataHoras = function(h_dec) {
                             if (!h_dec) return '00:00';
                             var h = Math.floor(h_dec);
                             var m = Math.round((h_dec - h) * 60);
-                            var hs = String(h);
-                            var ms = String(m);
-                            if (hs.length < 2) hs = '0' + hs;
-                            if (ms.length < 2) ms = '0' + ms;
-                            return hs + ':' + ms;
+                            return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
                         };
 
-                        var dDiaStr = String(d.dia);
-                        if (dDiaStr.length < 2) dDiaStr = '0' + dDiaStr;
-
                         htmlTudo += '<tr style="border-bottom: 1px solid #cbd5e1; ' + bgRow + '">' +
-                            '<td style="border:1px solid #cbd5e1; padding: 4px; font-weight: bold; text-align: center;">' + dDiaStr + ' (' + diaSemana + ')</td>' +
+                            '<td style="border:1px solid #cbd5e1; padding: 4px; font-weight: bold; text-align: center;">' + String(d.dia).padStart(2, '0') + ' (' + diaSemana + ')</td>' +
                             '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center;">' + detalheFormatado + '</td>' +
                             '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center;">' + txtPausa + '</td>' +
                             '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center;">' + formataHoras(d.horas_normais) + '</td>' +
@@ -653,11 +666,7 @@ async function testarFolhaACT() {
                     var formataHorasTotal = function(h_dec) {
                         var h = Math.floor(h_dec);
                         var m = Math.round((h_dec - h) * 60);
-                        var hs = String(h);
-                        var ms = String(m);
-                        if (hs.length < 2) hs = '0' + hs;
-                        if (ms.length < 2) ms = '0' + ms;
-                        return hs + ':' + ms;
+                        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
                     };
 
                     htmlTudo += '</tbody>' +
@@ -674,15 +683,15 @@ async function testarFolhaACT() {
 
                     if (assinaturaAtiva) {
                         htmlTudo += '<div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 15px; margin-top: 20px; text-align: center;">' +
-                            '<h3 style="font-size: 11px; color: #15803d; margin-bottom: 5px;">\u2705 DECLARA\u00c7\u00c3O DE TEMPOS DE TRABALHO ASSINADA DIGITALMENTE</h3>' +
+                            '<h3 style="font-size: 11px; color: #15803d; margin-bottom: 5px;">✅ DECLARAÇÃO DE TEMPOS DE TRABALHO ASSINADA DIGITALMENTE</h3>' +
                             '<p style="margin: 0; font-size: 12px; font-weight: bold; color: #0f172a;">' + assinaturaAtiva.carimbo_digital + '</p>' +
-                            '<p style="margin: 5px 0 0 0; font-size: 9px; color: #64748b;">(Carimbo Criptogr\u00e1fico Inviol\u00e1vel)</p>' +
+                            '<p style="margin: 5px 0 0 0; font-size: 9px; color: #64748b;">(Carimbo Criptográfico Inviolável)</p>' +
                             '</div>';
                     } else {
                         htmlTudo += '<div style="margin-top: 20px; padding: 15px; border-top: 1px dashed #cbd5e1;">' +
-                            '<h3 style="font-size: 11px; color: #0ea5e9; margin-bottom: 10px;">DECLARA\u00c7\u00c3O DE VALIDA\u00c7\u00c3O DE TEMPOS DE TRABALHO</h3>' +
+                            '<h3 style="font-size: 11px; color: #0ea5e9; margin-bottom: 10px;">DECLARAÇÃO DE VALIDAÇÃO DE TEMPOS DE TRABALHO</h3>' +
                             '<div style="font-size: 9px; color: #475569; text-align: justify; line-height: 1.5; margin-bottom: 20px;">' +
-                                '<p>Nos termos da lei, declaro que tomei conhecimento e concordo expressamente com o presente extrato, confirmando a sua exatid\u00e3o.</p>' +
+                                '<p>Nos termos da lei, declaro que tomei conhecimento e concordo expressamente com o presente extrato, confirmando a sua exatidão.</p>' +
                             '</div>' +
                             '<p style="font-size: 10px; color: #0f172a; margin-bottom: 30px;"><strong>Data:</strong> ____ / ____ / ________</p>' +
                             '<p style="font-size: 10px; color: #0f172a;"><strong>Assinatura:</strong> ___________________________________________________________</p>' +
@@ -696,10 +705,12 @@ async function testarFolhaACT() {
             }
         }
         
-        if (btn) btn.innerText = '\uD83D\uDCCA Gerar Folha ACT (Fase 1)';
+        if (btn) btn.innerText = '📊 Gerar Folha ACT';
     } catch (e) {
         console.error("Erro ao testar Folha ACT:", e);
-        alert('Falha de rede ao conectar \u00e0 API.');
+        alert('Falha de rede ao conectar à API.');
+        var btnErr = document.querySelector('button[onclick="testarFolhaACT()"]');
+        if(btnErr) btnErr.innerText = '📊 Gerar Folha ACT';
     }
 }
 
