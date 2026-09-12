@@ -52,6 +52,26 @@ function gerarRelatorioApp() {
     let htmlContainerCartoes = '';
     let htmlNovoCorpoTabelaPrint = '';
 
+    // 📍 MOTORES DE EXTRAÇÃO (Partilhados com a Home para garantir a mesma leitura imune ao Fuso Horário)
+    const extrairHHMM = (valor) => {
+        if (!valor) return '';
+        if (String(valor).includes('Z') || String(valor).includes('T')) {
+            const dataObj = new Date(valor);
+            if (!isNaN(dataObj)) {
+                return dataObj.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
+            }
+        }
+        const vStr = String(valor);
+        if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
+        return vStr.substring(0, 5);
+    };
+
+    const isPausaReal = (val) => {
+        if (!val) return false;
+        const s = String(val).trim().toLowerCase();
+        return s !== '' && s !== 'null' && s !== 'undefined';
+    };
+
     if(turnosDoMes.length === 0) {
         htmlContainerCartoes = `<div class="empty-state">Sem turnos associados neste mês para a seleção atual.</div>`;
         htmlNovoCorpoTabelaPrint = `<tr><td colspan="7" style="text-align:center; padding:15px;">Sem registos encontrados para este filtro.</td></tr>`;
@@ -75,6 +95,52 @@ function gerarRelatorioApp() {
                 }
             }
 
+            // 📍 ESTRUTURA PADRONIZADA DE PREVISTO VS REALIZADO (Turno e Pausa)
+            const gpsLog = e.controlo_gps || ''; 
+            const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa) || isPausaReal(e.hora_inicio_pausa);
+            const hasFimPausa = isPausaReal(e.timestamp_fim_pausa) || isPausaReal(e.hora_fim_pausa);
+            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
+            const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
+
+            const turnoPrevisto = `${e.hora_entrada || '--:--'} às ${e.hora_saida || '--:--'}`;
+            let turnoReal = 'A aguardar';
+            if (e.checkin_real && e.checkout_real) turnoReal = `${extrairHHMM(e.checkin_real)} às ${extrairHHMM(e.checkout_real)}`;
+            else if (e.checkin_real) turnoReal = `Desde as ${extrairHHMM(e.checkin_real)}`;
+
+            const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : '-');
+            let estadoPausa = 'A aguardar';
+            let bgPausa = '#f1f5f9';
+            let corPausa = '#475569';
+            const pReal = e.minutos_pausa_realizados !== undefined ? e.minutos_pausa_realizados : '-';
+
+            if (e.checkin_real && !e.checkout_real && gpsLog.includes('Pausa Início:')) {
+                estadoPausa = `Em curso (Início: ${hI})`;
+                bgPausa = '#fef3c7';
+                corPausa = '#b45309';
+            } else if (hasInicioPausa && hasFimPausa) {
+                estadoPausa = `${hI} às ${hF} (${pReal} min)`;
+                bgPausa = '#f0fdf4';
+                corPausa = '#166534';
+            } else if (e.status_turno === 'Concluído' || e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
+                estadoPausa = 'Não realizada';
+            }
+
+            const painelPadraoHTML = `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:10px; border-radius:8px; margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+                    <div>
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:bold; text-transform:uppercase;">🕒 Turno</div>
+                        <div style="font-size:0.85rem; color:#475569;">Previsto: <span style="color:#0f172a; font-weight:600;">${turnoPrevisto}</span></div>
+                        <div style="font-size:0.85rem; color:#475569;">Realizado: <span style="color:#0f172a; font-weight:600;">${turnoReal}</span></div>
+                    </div>
+                    <div style="height:1px; background:#e2e8f0; width:100%;"></div>
+                    <div style="background:${bgPausa}; padding:6px 8px; border-radius:6px;">
+                        <div style="font-size:0.75rem; color:${corPausa}; font-weight:bold; text-transform:uppercase;">☕ Pausa</div>
+                        <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${pMin} min</span></div>
+                        <div style="font-size:0.85rem; color:${corPausa};">Realizada: <span style="font-weight:600;">${estadoPausa}</span></div>
+                    </div>
+                </div>
+            `;
+
             // 📍 ETIQUETAS OFICIAIS DO RELATÓRIO
             let corStatus = 'color:var(--warning-color)';
             let lblStatus = e.status_turno;
@@ -85,7 +151,7 @@ function gerarRelatorioApp() {
             } else if (lblStatus === 'Falta' || lblStatus === 'Cancelado') { 
                 corStatus = 'color:var(--danger-color)'; 
                 lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_missed']) ? dic[curLang]['lbl_missed'] : 'Falta'; 
-            } else if (lblStatus === 'Em curso') { 
+            } else if (lblStatus === 'Em curso' || (e.checkin_real && !e.checkout_real)) { 
                 corStatus = 'color:var(--info-color, #0ea5e9); font-weight:800;'; 
                 lblStatus = 'Em curso ⏳'; 
             }
@@ -95,25 +161,21 @@ function gerarRelatorioApp() {
                     <div class="rep-info">
                         <div class="rep-data">📅 Dia ${e.data_inicio.split('-')[2]} (${e.data_inicio})</div>
                         <div class="rep-loc"><b>Local:</b> ${e.nome_unidade} | <b>Função:</b> ${e.funcao}</div>
-                        <div class="rep-loc" style="margin-top: 5px; background: #f8fafc; padding: 5px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            <span style="color:#64748b;">Previsto: ${e.hora_entrada} às ${e.hora_saida}</span><br>
-                            <b style="color:var(--primary-color);">Realizado: ${e.checkin_real || '--:--'} às ${e.checkout_real || '--:--'}</b><br>
-                            <span style="color:#b45309; font-size: 0.85rem; font-weight:bold;">${e.tem_pausa ? `☕ ${p} min Pausa` : 'Sem Pausa'}</span>
-                        </div>
+                        ${painelPadraoHTML}
                         <div class="rep-status" style="${corStatus}; margin-top: 5px;">Estado: ${lblStatus}</div>
                     </div>
                     <div class="rep-horas">${txtLinhaHoras}</div>
                 </div>
             `;
 
-            let checkinPrint = e.checkin_real ? `<b>${e.checkin_real}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${e.hora_entrada}</span>`;
-            let checkoutPrint = e.checkout_real ? `<b>${e.checkout_real}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${e.hora_saida}</span>`;
+            let checkinPrint = e.checkin_real ? `<b>${extrairHHMM(e.checkin_real)}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${e.hora_entrada}</span>`;
+            let checkoutPrint = e.checkout_real ? `<b>${extrairHHMM(e.checkout_real)}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${e.hora_saida}</span>`;
             let txtPausaPrint = e.tem_pausa ? `<span style="color:#b45309;">${p} min</span>` : '<span style="color:#94a3b8;">Sem Pausa</span>';
 
             if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
                 txtLinhaHoras = `<span style="color:red; font-size:7pt; font-weight:bold;">${e.status_turno.toUpperCase()}</span>`;
                 txtPausaPrint = '-'; checkinPrint = '-'; checkoutPrint = '-';
-            } else if (e.status_turno === 'Em curso') {
+            } else if (e.status_turno === 'Em curso' || (e.checkin_real && !e.checkout_real)) {
                 txtLinhaHoras = `<span style="color:#0ea5e9; font-size:7pt; font-weight:bold;">A DECORRER</span>`;
             }
 
