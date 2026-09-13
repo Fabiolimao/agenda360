@@ -38,12 +38,14 @@ function togglePausaSol() {
     if (wrapper) { if (chk) wrapper.classList.add('active'); else wrapper.classList.remove('active'); }
 }
 
-// BLOQUEIO VISUAL E LÓGICO NA CRIAÇÃO DE PEDIDOS
-const dataHojeStr = new Date().toISOString().slice(0, 10);
-const inputSolDataIn = document.getElementById('solDataIn');
-const inputSolDataAte = document.getElementById('solDataAte');
-if(inputSolDataIn) inputSolDataIn.min = dataHojeStr;
-if(inputSolDataAte) inputSolDataAte.min = dataHojeStr;
+// BLOQUEIO VISUAL E LÓGICO NA CRIAÇÃO DE PEDIDOS (ISOLADO PARA EVITAR CONFLITOS DE VARIÁVEIS)
+(function() {
+    const dataHojeStr = new Date().toISOString().slice(0, 10);
+    const inputSolDataIn = document.getElementById('solDataIn');
+    const inputSolDataAte = document.getElementById('solDataAte');
+    if(inputSolDataIn) inputSolDataIn.min = dataHojeStr;
+    if(inputSolDataAte) inputSolDataAte.min = dataHojeStr;
+})();
 
 document.getElementById('formSolicitacaoExtra')?.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
@@ -280,10 +282,11 @@ function cancelarMagica() {
 }
 async function verificarAlertasDashboard() { const dashAlerts = document.getElementById('boxAlertasDashboard'); if (!dashAlerts) return; try { const res = await fetch(`/api/solicitacoes/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } }); let sols = await res.json(); dashAlerts.innerHTML = ''; if (!Array.isArray(sols)) return; if (tipoAcesso !== 'gestor') { const pendentes = sols.filter(s => { const mAloc = s.alocados ? parseInt(s.alocados) : 0; return mAloc < s.quantidade && !s.status.includes('Recusado') && !s.status.includes('Cancelado') && !s.status.includes('Expirado'); }); if (pendentes.length > 0) { dashAlerts.innerHTML = `<div style="background:#fffbeb; border:2px solid var(--warning-color); padding:15px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="color:#b45309; margin:0 0 5px 0;">🔔 Alerta de Operação B2B</h3><p style="color:#78350f; margin:0;">Existem <b>${pendentes.length}</b> pedidos de clientes a aguardar alocação de equipa.</p></div><button class="btn-action" style="background:var(--warning-color); color:black;" onclick="navegar('solicitacoes', document.querySelector('#menuSolicitacoes a'))">Ver Pedidos</button></div>`; } } else { sols = sols.filter(s => s.unidade_id == gestorUnidadeId); const concluidos = sols.filter(s => { const mAloc = s.alocados ? parseInt(s.alocados) : 0; return mAloc >= s.quantidade; }); if (concluidos.length > 0) { dashAlerts.innerHTML = `<div style="background:#f0fdf4; border:2px solid var(--success-color); padding:15px; border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="color:#065f46; margin:0 0 5px 0;">✅ Pedidos Atendidos</h3><p style="color:#064e3b; margin:0;">Os seus pedidos recentes de equipa foram totalmente preenchidos pela Agência.</p></div><button class="btn-action" style="background:var(--success-color);" onclick="navegar('solicitacoes', document.querySelector('#menuSolicitacoes a'))">Ver Equipa</button></div>`; } } } catch (e) { } }
 
+
 // ==========================================
 // MÓDULO: CALENDÁRIO OPERACIONAL
 // ==========================================
-async function carregarSelectsCalendario() {
+window.carregarSelectsCalendario = async function() {
     try {
         const [resF, resU] = await Promise.all([
             fetch(`/api/funcionarios/agencia/${agendaId}`, { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -355,7 +358,7 @@ async function carregarSelectsCalendario() {
 
         gerarCalendario();
     } catch (e) { console.error("Erro selects calendário:", e); }
-}
+};
 
 async function gerarCalendario() {
     const funcId = document.getElementById('calFunc').value;
@@ -376,45 +379,17 @@ async function gerarCalendario() {
         ]);
         let todasEscalas = await resE.json();
         let todasSols = await resS.json();
-        
-        const agora = new Date();
+        if (!Array.isArray(todasEscalas)) return;
 
-        if (Array.isArray(todasEscalas)) {
-            todasEscalas.forEach(e => {
-                if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
-                if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
-
-                if (e.status_turno === 'Agendado' || e.status_turno === 'Pendente' || !e.status_turno) {
-                    if (e.data_inicio && e.hora_entrada) {
-                        const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
-                        const [horaT, minT] = e.hora_entrada.split(':').map(Number);
-                        const dataTurnoObjeto = new Date(anoT, mesT - 1, diaT, horaT, minT);
-                        const diffMinutos = (dataTurnoObjeto - agora) / (1000 * 60);
-                        
-                        if (diffMinutos < -120) {
-                            const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
-                            e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
-                            try {
-                                fetch(`/api/escalas/${e.id}`, { 
-                                    method: 'PUT', 
-                                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                                    body: JSON.stringify({ status_turno: e.status_turno }) 
-                                }).catch(()=>{});
-                            } catch(err){}
-                        }
-                    }
-                }
-            });
-        }
-
+        todasEscalas.forEach(e => {
+            if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
+            if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
+        });
         if (Array.isArray(todasSols)) {
             todasSols.forEach(s => {
                 if (s.data_inicio) s.data_inicio = s.data_inicio.split('T')[0];
-                if (s.data_pedido) s.data_pedido = s.data_pedido.split('T')[0];
             });
         }
-
-        if (!Array.isArray(todasEscalas)) return;
 
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
             dadosEscalas = todasEscalas.filter(e => e.unidade_id == gestorUnidadeId);
@@ -424,19 +399,11 @@ async function gerarCalendario() {
             dadosSolicitacoes = Array.isArray(todasSols) ? todasSols : [];
         }
 
-        const scales = dadosEscalas.filter(e => 
-            (funcId ? e.funcionario_id == funcId : true) && 
-            (unidadeId ? e.unidade_id == unidadeId : true) &&
-            e.status_turno !== 'Cancelado' &&
-            e.status_turno !== 'Agendamento Não efetivado'
-        );
-
+        const scales = dadosEscalas.filter(e => (funcId ? e.funcionario_id == funcId : true) && (unidadeId ? e.unidade_id == unidadeId : true));
         const dataHojeStr = new Date().toISOString().slice(0, 10);
+        
         const sols = dadosSolicitacoes.filter(s =>
-            (unidadeId ? s.unidade_id == unidadeId : true) &&
-            s.status !== 'Cancelado' &&
-            s.status !== 'Recusado' &&
-            !(s.data_inicio < dataHojeStr && (s.alocados ? parseInt(s.alocados) : 0) < s.quantidade)
+            (unidadeId ? s.unidade_id == unidadeId : true)
         );
 
         for (let i = 0; i < primeiroDia; i++) grid.innerHTML += `<div class="cal-day empty-pad" style="background:#f8fafc; border:none; cursor:default;"></div>`;
@@ -451,20 +418,27 @@ async function gerarCalendario() {
             solsDia.forEach(s => {
                 const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
                 if (pendentes > 0) {
-                    blocosDia.push(`<div class="cal-escala" style="background:#fffbeb; border-left:3px solid var(--warning-color); color:#b45309; cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();" title="Pedido B2B">⏳ ${pendentes}x ${sanitizarTexto(s.funcao)}</div>`);
+                    const isExpirado = (s.data_inicio < dataHojeStr) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
+                    const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
+                    const corBorda = isExpirado ? 'var(--danger-color)' : 'var(--warning-color)';
+                    const corTexto = isExpirado ? '#991b1b' : '#b45309';
+                    const icon = isExpirado ? '❌' : '⏳';
+                    
+                    blocosDia.push(`<div class="cal-escala" style="background:${corFundo}; border-left:3px solid ${corBorda}; color:${corTexto}; cursor:pointer;" onclick="abrirResumoDia('${dataAtualStr}'); event.stopPropagation();" title="Pedido B2B">${icon} ${pendentes}x ${sanitizarTexto(s.funcao)}</div>`);
                 }
             });
 
             turnosDia.forEach(t => {
-                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
+                let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
+                let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
                 let cor = 'laranja';
 
                 if (isAdefinir) cor = 'laranja';
                 else if (t.status_turno === 'Concluído') cor = 'verde';
-                else if (t.status_turno === 'Falta') cor = 'vermelha';
+                else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') cor = 'vermelha';
                 else if (new Date(t.data_inicio) < new Date() && !t.checkin_real) cor = 'vermelha';
 
-                let txtNomeCurto = isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido');
+                let txtNomeCurto = isVagaCancelada ? '❌ Vaga Cancelada' : (isAdefinir ? '⏳ A Definir' : (t.nome_func ? sanitizarTexto(t.nome_func.split(' ')[0]) : 'Desconhecido'));
                 let txt = '';
                 if (tipoAcesso === 'gestor') { txt = `👤 ${txtNomeCurto} - ${sanitizarTexto(t.funcao)}`; }
                 else { txt = funcId ? sanitizarTexto(t.nome_unidade) : `${txtNomeCurto} - ${sanitizarTexto(t.nome_unidade)}`; }
@@ -497,12 +471,10 @@ window.abrirResumoDia = function (dataStr) {
     const turnosDia = dadosEscalas.filter(e => 
         e.data_inicio === dataStr && 
         (funcId ? e.funcionario_id == funcId : true) && 
-        (unidadeId ? e.unidade_id == unidadeId : true) &&
-        e.status_turno !== 'Cancelado' &&
-        e.status_turno !== 'Agendamento Não efetivado'
+        (unidadeId ? e.unidade_id == unidadeId : true)
     );
 
-    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true) && s.status !== 'Cancelado' && s.status !== 'Recusado');
+    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true));
 
     let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
     const formatarHora = (h) => h && h.length >= 5 ? h.substring(0, 5) : '--:--';
@@ -519,13 +491,21 @@ window.abrirResumoDia = function (dataStr) {
     solsDia.forEach(s => {
         const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
         if (pendentes > 0) {
+            const isExpirado = (s.data_inicio < new Date().toISOString().slice(0, 10)) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
+            const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
+            const corBordaPrincipal = isExpirado ? '#fca5a5' : '#fcd34d';
+            const corBordaEsquerda = isExpirado ? '#ef4444' : '#f59e0b';
+            const corTextoTitulo = isExpirado ? '#991b1b' : '#b45309';
+            const corTextoSecundario = isExpirado ? '#7f1d1d' : '#78350f';
+            const icon = isExpirado ? '❌' : '🛎️';
+
             html += `
-            <div style="background:#fffbeb; border:1px solid #fcd34d; border-left:4px solid #f59e0b; padding:12px; border-radius:6px;">
+            <div style="background:${corFundo}; border:1px solid ${corBordaPrincipal}; border-left:4px solid ${corBordaEsquerda}; padding:12px; border-radius:6px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <b style="color:#b45309; font-size:1.05rem;">🛎️ Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
-                        <span style="color:#78350f;">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
-                        <small style="color:#92400e;">Horário: ${formatarHora(s.hora_entrada)} às ${formatarHora(s.hora_saida)}</small>
+                        <b style="color:${corTextoTitulo}; font-size:1.05rem;">${icon} Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
+                        <span style="color:${corTextoSecundario};">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
+                        <small style="color:${corTextoSecundario};">Horário: ${formatarHora(s.hora_entrada)} às ${formatarHora(s.hora_saida)}</small>
                     </div>
                     ${(tipoAcesso !== 'gestor' && dataStr >= new Date().toISOString().slice(0, 10)) ? `<button class="btn-action" style="background:var(--success-color); color:white; font-size:0.8rem; padding:6px 12px;" onclick="document.getElementById('modalVer').style.display='none'; atenderSolicitacaoMagica(${s.id})">🪄 Atender Pedido</button>` : ''}
                 </div>
@@ -538,13 +518,14 @@ window.abrirResumoDia = function (dataStr) {
     }
 
     turnosDia.forEach(t => {
-        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR');
-        let txtNome = isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido');
+        let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
+        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
+        let txtNome = isVagaCancelada ? '<span style="color:var(--danger-color);font-weight:bold;">❌ Vaga Não Preenchida</span>' : (isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido'));
         let statusInfo = sanitizarTexto(t.status_turno);
-        let corBorda = '#cbd5e1'; let corFundo = '#f8fafc';
+        let corBorda = '#cbd5e1'; let corFundo = '#ffffff';
 
         if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
-        else if (t.status_turno === 'Falta') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
+        else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
         else if (t.status_turno === 'A Aguardar Validação') corBorda = 'var(--warning-color)';
         else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
         else if (isAdefinir) { corBorda = '#f59e0b'; corFundo = '#fffbeb'; }
@@ -631,6 +612,7 @@ window.abrirResumoDia = function (dataStr) {
     abrirVerDetalhes(`📅 Resumo do Dia: ${dataF}`, html);
 };
 
+
 // ==========================================
 // MÓDULO: GESTÃO DE ESCALAS E TURNOS
 // ==========================================
@@ -688,7 +670,7 @@ async function listarEscalas() {
         const agora = new Date();
         
         if (Array.isArray(todasAsEscalas)) {
-            todasAsEscalas.forEach(e => {
+            for (let e of todasAsEscalas) {
                 if (e.data_inicio) e.data_inicio = e.data_inicio.split('T')[0];
                 if (e.data_fim) e.data_fim = e.data_fim.split('T')[0];
                 
@@ -703,16 +685,26 @@ async function listarEscalas() {
                             const isVaga = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR');
                             e.status_turno = isVaga ? 'Agendamento Não efetivado' : 'Falta';
                             try {
-                                fetch(`/api/escalas/${e.id}`, { 
+                                await fetch(`/api/escalas/${e.id}`, { 
                                     method: 'PUT', 
                                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                                    body: JSON.stringify({ status_turno: e.status_turno }) 
-                                }).catch(()=>{});
+                                    body: JSON.stringify({ 
+                                        unidade_id: e.unidade_id,
+                                        funcionario_id: e.funcionario_id || 'A_DEFINIR',
+                                        funcao: e.funcao,
+                                        data_inicio: e.data_inicio,
+                                        data_fim: e.data_fim,
+                                        hora_entrada: e.hora_entrada,
+                                        hora_saida: e.hora_saida,
+                                        status_turno: e.status_turno 
+                                    }) 
+                                });
+                                await new Promise(r => setTimeout(r, 100)); 
                             } catch(err){}
                         }
                     }
                 }
-            });
+            }
         }
 
         if (tipoAcesso === 'gestor' && gestorUnidadeId) {
@@ -764,14 +756,17 @@ function renderizarTabelaEscalas() {
                 matchFunc = (String(e.funcionario_id) === String(fFunc));
             }
         }
+
         let matchUnid = true;
         if (fUnidade !== 'ALL') {
             matchUnid = (String(e.unidade_id) === String(fUnidade));
         }
+
         let matchCli = true;
         if (fCliente !== 'ALL') {
             matchCli = (e.nome_empresa === fCliente); 
         }
+
         return matchFunc && matchUnid && matchCli;
     });
 
@@ -946,20 +941,23 @@ function toggleMultiplo() {
     if (wrapper) { if (multi) wrapper.classList.add('active'); else wrapper.classList.remove('active'); }
 }
 
+
 function editarEscala(id) {
     const e = dadosEscalas.find(x => x.id === id); if (!e) return;
     const p = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
-    document.getElementById('escIdEdit').value = e.id;
-    document.getElementById('escUnidade').value = e.unidade_id;
-    document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
-    document.getElementById('escFuncao').value = e.funcao;
-    document.getElementById('escDataIn').value = e.data_inicio;
-    document.getElementById('escHoraIn').value = e.hora_entrada;
-    document.getElementById('escHoraOut').value = e.hora_saida;
+
+    if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = e.id;
+    if(document.getElementById('escUnidade')) document.getElementById('escUnidade').value = e.unidade_id;
+    if(document.getElementById('escFunc')) document.getElementById('escFunc').value = e.funcionario_id || 'A_DEFINIR';
+    if(document.getElementById('escFuncao')) document.getElementById('escFuncao').value = e.funcao;
+    if(document.getElementById('escDataIn')) document.getElementById('escDataIn').value = e.data_inicio;
+    if(document.getElementById('escHoraIn')) document.getElementById('escHoraIn').value = e.hora_entrada;
+    if(document.getElementById('escHoraOut')) document.getElementById('escHoraOut').value = e.hora_saida;
 
     if (e.tem_pausa) {
-        document.getElementById('escPausa').checked = true;
-        document.getElementById('escMinutos').value = p;
+        if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = true;
+        if(document.getElementById('escMinutos')) document.getElementById('escMinutos').value = p;
+        
         const inInput = document.getElementById('escHoraInicioPausa');
         const fimInput = document.getElementById('escHoraFimPausa');
         
@@ -974,54 +972,67 @@ function editarEscala(id) {
         if (inInput) inInput.value = extrairLiteral(e.timestamp_inicio_pausa) || extrairLiteral(e.hora_inicio_pausa) || '';
         if (fimInput) fimInput.value = extrairLiteral(e.timestamp_fim_pausa) || extrairLiteral(e.hora_fim_pausa) || '';
     } else {
-        document.getElementById('escPausa').checked = false;
-        document.getElementById('escMinutos').value = 0;
-        const inInput = document.getElementById('escHoraInicioPausa');
-        const fimInput = document.getElementById('escHoraFimPausa');
-        if (inInput) inInput.value = '';
-        if (fimInput) fimInput.value = '';
+        if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = false;
+        if(document.getElementById('escMinutos')) document.getElementById('escMinutos').value = 0;
+        if(document.getElementById('escHoraInicioPausa')) document.getElementById('escHoraInicioPausa').value = '';
+        if(document.getElementById('escHoraFimPausa')) document.getElementById('escHoraFimPausa').value = '';
     }
-    togglePausaEsc();
+    
+    if(typeof togglePausaEsc === 'function') togglePausaEsc();
 
-    document.getElementById('linhaAgendamentoMultiplo').style.display = 'none';
-    document.getElementById('linhaAcertoManual').style.display = 'block';
+    if(document.getElementById('linhaAgendamentoMultiplo')) document.getElementById('linhaAgendamentoMultiplo').style.display = 'none';
+    if(document.getElementById('linhaAcertoManual')) document.getElementById('linhaAcertoManual').style.display = 'block';
+    
     const boxObs = document.getElementById('boxObsCliente');
-    if (e.obs_cliente) { document.getElementById('lblObsCliente').innerText = `"${e.obs_cliente}"`; boxObs.style.display = 'block'; } else { boxObs.style.display = 'none'; }
-    document.getElementById('escStatus').value = e.status_turno || 'Agendado';
-    document.getElementById('escCheckinReal').value = e.checkin_real || '';
-    document.getElementById('escCheckoutReal').value = e.checkout_real || '';
-    document.getElementById('btnSalvarEscala').innerText = 'Gravar Acerto do Turno';
-    document.getElementById('btnCancelarEscala').style.display = 'inline-block';
-    destacarFormulario('formEscala');
+    if (boxObs) {
+        if (e.obs_cliente) { 
+            if(document.getElementById('lblObsCliente')) document.getElementById('lblObsCliente').innerText = `"${e.obs_cliente}"`; 
+            boxObs.style.display = 'block'; 
+        } else { 
+            boxObs.style.display = 'none'; 
+        }
+    }
+    
+    if(document.getElementById('escStatus')) document.getElementById('escStatus').value = e.status_turno || 'Agendado';
+    if(document.getElementById('escCheckinReal')) document.getElementById('escCheckinReal').value = e.checkin_real || '';
+    if(document.getElementById('escCheckoutReal')) document.getElementById('escCheckoutReal').value = e.checkout_real || '';
+    if(document.getElementById('btnSalvarEscala')) document.getElementById('btnSalvarEscala').innerText = 'Gravar Acerto do Turno';
+    if(document.getElementById('btnCancelarEscala')) document.getElementById('btnCancelarEscala').style.display = 'inline-block';
+    
+    if(typeof destacarFormulario === 'function') destacarFormulario('formEscala');
 }
 
 function cancelarEdicaoEscala() {
-    removerDestaqueFormulario();
-    document.getElementById('formEscala').reset();
-    document.getElementById('escIdEdit').value = '';
-    document.getElementById('linhaAcertoManual').style.display = 'none';
+    if(typeof removerDestaqueFormulario === 'function') removerDestaqueFormulario();
+    const form = document.getElementById('formEscala');
+    if (form) form.reset();
+    
+    if(document.getElementById('escIdEdit')) document.getElementById('escIdEdit').value = '';
+    if(document.getElementById('linhaAcertoManual')) document.getElementById('linhaAcertoManual').style.display = 'none';
 
-    document.getElementById('escMultiplo').checked = false;
-    toggleMultiplo();
-    document.getElementById('escPausa').checked = false;
-    const inInput = document.getElementById('escHoraInicioPausa');
-    const fimInput = document.getElementById('escHoraFimPausa');
-    if (inInput) inInput.value = '';
-    if (fimInput) fimInput.value = '';
-    togglePausaEsc();
+    if(document.getElementById('escMultiplo')) document.getElementById('escMultiplo').checked = false;
+    if(typeof toggleMultiplo === 'function') toggleMultiplo();
+    
+    if(document.getElementById('escPausa')) document.getElementById('escPausa').checked = false;
+    if(document.getElementById('escHoraInicioPausa')) document.getElementById('escHoraInicioPausa').value = '';
+    if(document.getElementById('escHoraFimPausa')) document.getElementById('escHoraFimPausa').value = '';
+    if(typeof togglePausaEsc === 'function') togglePausaEsc();
 
-    document.getElementById('escStatus').value = 'Agendado';
-    document.getElementById('boxObsCliente').style.display = 'none';
-    document.getElementById('btnSalvarEscala').innerText = 'Confirmar Agendamento';
-    document.getElementById('btnCancelarEscala').style.display = 'none';
-    if (magicSolId) {
-        atualizarUIMagica();
-        removerDestaqueFormulario();
+    if(document.getElementById('escStatus')) document.getElementById('escStatus').value = 'Agendado';
+    if(document.getElementById('boxObsCliente')) document.getElementById('boxObsCliente').style.display = 'none';
+    if(document.getElementById('btnSalvarEscala')) document.getElementById('btnSalvarEscala').innerText = 'Confirmar Agendamento';
+    if(document.getElementById('btnCancelarEscala')) document.getElementById('btnCancelarEscala').style.display = 'none';
+    
+    if (typeof magicSolId !== 'undefined' && magicSolId) {
+        if(typeof atualizarUIMagica === 'function') atualizarUIMagica();
     } else {
-        document.getElementById('linhaAgendamentoMultiplo').style.display = 'block';
-        document.getElementById('bannerMagico').style.display = 'none';
-        document.getElementById('linhaAgendamentoMultiplo').style.border = '1px solid #e2e8f0';
-        document.getElementById('linhaAgendamentoMultiplo').style.background = '#f8fafc';
+        const linhaAg = document.getElementById('linhaAgendamentoMultiplo');
+        if(linhaAg) {
+            linhaAg.style.display = 'block';
+            linhaAg.style.border = '1px solid #e2e8f0';
+            linhaAg.style.background = '#f8fafc';
+        }
+        if(document.getElementById('bannerMagico')) document.getElementById('bannerMagico').style.display = 'none';
     }
 }
 
@@ -1049,7 +1060,7 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
         minutos_pausa: parseInt(document.getElementById('escMinutos').value) || 0,
         hora_inicio_pausa: vInicio,
         hora_fim_pausa: vFim,
-        solicitacao_id: magicSolId
+        solicitacao_id: (typeof magicSolId !== 'undefined' ? magicSolId : null)
     };
 
     try {
@@ -1057,8 +1068,8 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
             const dataTurno = document.getElementById('escDataIn').value;
             baseDados.data_inicio = dataTurno;
             baseDados.data_fim = dataTurno;
-            baseDados.checkin_real = document.getElementById('escCheckinReal').value || null;
-            baseDados.checkout_real = document.getElementById('escCheckoutReal').value || null;
+            baseDados.checkin_real = document.getElementById('escCheckinReal') ? document.getElementById('escCheckinReal').value : null;
+            baseDados.checkout_real = document.getElementById('escCheckoutReal') ? document.getElementById('escCheckoutReal').value : null;
             baseDados.status_turno = document.getElementById('escStatus') ? document.getElementById('escStatus').value : 'Agendado';
             
             baseDados.timestamp_inicio_pausa = vInicio ? `${dataTurno}T${vInicio}:00` : null;
@@ -1082,7 +1093,7 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
                 if (!res.ok) {
                     const d = await res.json(); alert(d.erro);
                 } else {
-                    if (magicSolId) {
+                    if (typeof magicSolId !== 'undefined' && magicSolId) {
                         magicAlocados++;
                         if (magicAlocados >= magicQtd) {
                             alert("✅ Pedido do Cliente totalmente preenchido com sucesso!");
@@ -1115,9 +1126,9 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
                 for (let d = new Date(dataIn); d <= dataAte; d.setDate(d.getDate() + 1)) {
                     if (diasValidos.includes(d.getDay())) {
                         const dataStr = d.toISOString().slice(0, 10);
-                        let targetSolId = magicSolId;
+                        let targetSolId = (typeof magicSolId !== 'undefined' ? magicSolId : null);
 
-                        if (magicSolId) {
+                        if (typeof magicSolId !== 'undefined' && magicSolId) {
                             const solOriginal = dadosSolicitacoes.find(s => s.id === magicSolId);
                             if (solOriginal) {
                                 const matchingSol = dadosSolicitacoes.find(s => s.unidade_id == solOriginal.unidade_id && s.funcao === solOriginal.funcao && s.data_inicio === dataStr);
@@ -1203,6 +1214,155 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
     btn.innerText = idEdit ? 'Gravar Acerto do Turno' : 'Confirmar Agendamento';
     btn.disabled = false;
 });
+
+window.abrirResumoDia = function (dataStr) {
+    const funcId = document.getElementById('calFunc').value;
+    let unidadeId = document.getElementById('calUnidade').value;
+    if (tipoAcesso === 'gestor') unidadeId = gestorUnidadeId;
+
+    const turnosDia = dadosEscalas.filter(e => 
+        e.data_inicio === dataStr && 
+        (funcId ? e.funcionario_id == funcId : true) && 
+        (unidadeId ? e.unidade_id == unidadeId : true)
+    );
+
+    const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true));
+
+    let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
+    const formatarHora = (h) => h && h.length >= 5 ? h.substring(0, 5) : '--:--';
+    
+    // Extrator limpo e seguro para capturar os horários predefinidos da pausa ignorando fusos
+    const extrairHHMM = (valor) => {
+        if (!valor) return null;
+        const vStr = String(valor);
+        if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
+        if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
+        return vStr.substring(0, 5);
+    };
+
+    solsDia.forEach(s => {
+        const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
+        if (pendentes > 0) {
+            const isExpirado = (s.data_inicio < new Date().toISOString().slice(0, 10)) || s.status.includes('Cancelado') || s.status.includes('Recusado') || s.status.includes('Expirado');
+            const corFundo = isExpirado ? '#fef2f2' : '#fffbeb';
+            const corBordaPrincipal = isExpirado ? '#fca5a5' : '#fcd34d';
+            const corBordaEsquerda = isExpirado ? '#ef4444' : '#f59e0b';
+            const corTextoTitulo = isExpirado ? '#991b1b' : '#b45309';
+            const corTextoSecundario = isExpirado ? '#7f1d1d' : '#78350f';
+            const icon = isExpirado ? '❌' : '🛎️';
+
+            html += `
+            <div style="background:${corFundo}; border:1px solid ${corBordaPrincipal}; border-left:4px solid ${corBordaEsquerda}; padding:12px; border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <b style="color:${corTextoTitulo}; font-size:1.05rem;">${icon} Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
+                        <span style="color:${corTextoSecundario};">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
+                        <small style="color:${corTextoSecundario};">Horário: ${formatarHora(s.hora_entrada)} às ${formatarHora(s.hora_saida)}</small>
+                    </div>
+                    ${(tipoAcesso !== 'gestor' && dataStr >= new Date().toISOString().slice(0, 10)) ? `<button class="btn-action" style="background:var(--success-color); color:white; font-size:0.8rem; padding:6px 12px;" onclick="document.getElementById('modalVer').style.display='none'; atenderSolicitacaoMagica(${s.id})">🪄 Atender Pedido</button>` : ''}
+                </div>
+            </div>`;
+        }
+    });
+
+    if (turnosDia.length === 0 && solsDia.length === 0) {
+        html += `<p style="text-align:center; color:#64748b; margin-top:20px;">Sem turnos agendados para este dia.</p>`;
+    }
+
+    turnosDia.forEach(t => {
+        let isVagaCancelada = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && (t.status_turno === 'Agendamento Não efetivado' || t.status_turno === 'Cancelado');
+        let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
+        let txtNome = isVagaCancelada ? '<span style="color:var(--danger-color);font-weight:bold;">❌ Vaga Não Preenchida</span>' : (isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido'));
+        let statusInfo = sanitizarTexto(t.status_turno);
+        let corBorda = '#cbd5e1'; let corFundo = '#ffffff';
+
+        if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
+        else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
+        else if (t.status_turno === 'A Aguardar Validação') corBorda = 'var(--warning-color)';
+        else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
+        else if (isAdefinir) { corBorda = '#f59e0b'; corFundo = '#fffbeb'; }
+
+        let hIn = formatarHora(t.hora_entrada);
+        let hOut = formatarHora(t.hora_saida);
+        let hInReal = formatarHora(t.checkin_real);
+        let hOutReal = formatarHora(t.checkout_real);
+        
+        let statusReal = (t.checkin_real) ? `${hInReal} às ${t.checkout_real ? hOutReal : '...'}` : 'A aguardar';
+        
+        // 📍 O NOVO CORAÇÃO DA PAUSA PREVISTA
+        let pIn = extrairHHMM(t.timestamp_inicio_pausa) || extrairHHMM(t.hora_inicio_pausa);
+        let pOut = extrairHHMM(t.timestamp_fim_pausa) || extrairHHMM(t.hora_fim_pausa);
+        let pPrev = '0 min';
+        
+        if (t.tem_pausa) {
+            if (pIn && pOut) {
+                pPrev = `${pIn} às ${pOut} (${t.minutos_pausa || 0} min)`;
+            } else {
+                pPrev = `${t.minutos_pausa || 0} min`;
+            }
+        }
+        
+        let pRealFormat = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar';
+
+        html += `
+        <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:15px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:5px;">
+                <b style="font-size:1.1rem; color:var(--primary-color);">${txtNome}</b>
+                <span style="font-size:0.8rem; font-weight:bold; padding:4px 8px; border-radius:12px; background:#e2e8f0; color:#334155;">${statusInfo}</span>
+            </div>
+            
+            <div style="font-size:0.9rem; color:#475569; margin-bottom:15px; line-height:1.6;">
+                <div style="display:flex; align-items:center; gap:6px;">📍 <span>${sanitizarTexto(t.nome_unidade)}</span></div>
+                <div style="display:flex; align-items:center; gap:6px;">⚙️ <span>${sanitizarTexto(t.funcao)}</span></div>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px; margin-bottom:10px;">
+                <div style="font-size:0.75rem; font-weight:bold; color:#64748b; margin-bottom:4px; display:flex; align-items:center; gap:5px;">🕒 TURNO</div>
+                <div style="font-size:0.85rem; color:#334155;">
+                    <div style="margin-bottom:3px;">Previsto: <b>${hIn} às ${hOut}</b></div>
+                    <div>Realizado: <b>${statusReal}</b></div>
+                </div>
+            </div>`;
+
+        if (t.tem_pausa) {
+            html += `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px; margin-bottom:15px;">
+                <div style="font-size:0.75rem; font-weight:bold; color:#64748b; margin-bottom:4px; display:flex; align-items:center; gap:5px;">☕ PAUSA</div>
+                <div style="font-size:0.85rem; color:#334155;">
+                    <div style="margin-bottom:3px;">Prevista: <b>${pPrev}</b></div>
+                    <div>Realizada: <b>${pRealFormat}</b></div>
+                </div>
+            </div>`;
+        } else {
+             html += `<div style="margin-bottom:15px;"></div>`;
+        }
+
+        html += `
+            <div style="text-align:right; border-top:1px dashed #cbd5e1; padding-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+        `;
+
+        if (tipoAcesso === 'gestor') {
+            html += `<button class="btn-action" style="background:#f59e0b; color:white; border:none; font-size:0.85rem; font-weight:bold; padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="document.getElementById('modalVer').style.display='none'; irParaAgendamento('${dataStr}', ${t.id})">✏️ Editar Turno</button>`;
+            
+            if (t.status_turno === 'A Aguardar Validação') {
+                html += `<button class="btn-action" style="background:var(--warning-color); color:black; font-size:0.85rem; padding:8px 12px; border-radius:6px;" onclick="document.getElementById('modalVer').style.display='none'; abrirValidacaoPonto(${t.id})">🛡️ Validar Turno</button>`;
+            }
+        } else {
+            html += `<button class="btn-action" style="background:var(--warning-color); color:black; font-size:0.85rem;" onclick="document.getElementById('modalVer').style.display='none'; irParaAgendamento('${dataStr}', ${t.id})">✏️ Editar Turno</button>`;
+
+            if ((t.status_turno === 'Pendente' || isAdefinir) && window.whatsappAtivo) {
+                html += `<button class="btn-action" style="background:#25D366; color:white; border:none; font-size:0.85rem;" onclick="enviarOfertaWhatsApp(${t.id})">📲 Ofertar via WhatsApp</button>`;
+            }
+        }
+
+        html += `</div></div>`;
+    });
+
+    html += `</div>`;
+    let d = new Date(dataStr);
+    let dataF = d.toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    abrirVerDetalhes(`📅 Resumo do Dia: ${dataF}`, html);
+};
 
 async function apagarEscala(id) { 
     if (confirm("Tem a certeza que deseja apagar/cancelar este turno?")) { 
