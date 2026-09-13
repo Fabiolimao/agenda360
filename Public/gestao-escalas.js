@@ -477,6 +477,7 @@ window.abrirResumoDia = function (dataStr) {
     const solsDia = dadosSolicitacoes.filter(s => s.data_inicio === dataStr && (unidadeId ? s.unidade_id == unidadeId : true));
 
     let html = `<div style="display:flex; flex-direction:column; gap:10px;">`;
+    const formatarHora = (h) => h && h.length >= 5 ? h.substring(0, 5) : '--:--';
 
     solsDia.forEach(s => {
         const pendentes = s.quantidade - (s.alocados ? parseInt(s.alocados) : 0);
@@ -495,7 +496,7 @@ window.abrirResumoDia = function (dataStr) {
                     <div>
                         <b style="color:${corTextoTitulo}; font-size:1.05rem;">${icon} Pedido B2B: ${sanitizarTexto(s.nome_unidade)}</b><br>
                         <span style="color:${corTextoSecundario};">Por alocar: <b>${pendentes}x ${sanitizarTexto(s.funcao)}</b></span><br>
-                        <small style="color:${corTextoSecundario};">Horário: ${s.hora_entrada} às ${s.hora_saida}</small>
+                        <small style="color:${corTextoSecundario};">Horário: ${formatarHora(s.hora_entrada)} às ${formatarHora(s.hora_saida)}</small>
                     </div>
                     ${(tipoAcesso !== 'gestor' && dataStr >= new Date().toISOString().slice(0, 10)) ? `<button class="btn-action" style="background:var(--success-color); color:white; font-size:0.8rem; padding:6px 12px;" onclick="document.getElementById('modalVer').style.display='none'; atenderSolicitacaoMagica(${s.id})">🪄 Atender Pedido</button>` : ''}
                 </div>
@@ -512,7 +513,7 @@ window.abrirResumoDia = function (dataStr) {
         let isAdefinir = (!t.funcionario_id || String(t.funcionario_id) === 'A_DEFINIR') && !isVagaCancelada;
         let txtNome = isVagaCancelada ? '<span style="color:var(--danger-color);font-weight:bold;">❌ Vaga Não Preenchida</span>' : (isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (sanitizarTexto(t.nome_func) || 'Desconhecido'));
         let statusInfo = sanitizarTexto(t.status_turno);
-        let corBorda = '#cbd5e1'; let corFundo = '#f8fafc';
+        let corBorda = '#cbd5e1'; let corFundo = '#ffffff';
 
         if (t.status_turno === 'Concluído') corBorda = 'var(--success-color)';
         else if (t.status_turno === 'Falta' || t.status_turno === 'Cancelado' || t.status_turno === 'Agendamento Não efetivado') { corBorda = 'var(--danger-color)'; corFundo = '#fef2f2'; }
@@ -520,35 +521,63 @@ window.abrirResumoDia = function (dataStr) {
         else if (t.status_turno === 'Pendente') { corBorda = 'var(--warning-color)'; corFundo = '#fffbeb'; }
         else if (isAdefinir) { corBorda = '#f59e0b'; corFundo = '#fffbeb'; }
 
-        let pReal = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined)
-            ? t.minutos_pausa_realizados + 'm'
-            : (t.status_turno === 'Concluído' ? '0m' : '-');
-        let txtP = t.tem_pausa ? `(Previsto: ${t.minutos_pausa || 0}m | Real: ${pReal})` : '(Sem pausa)';
+        let hIn = formatarHora(t.hora_entrada);
+        let hOut = formatarHora(t.hora_saida);
+        let hInReal = formatarHora(t.checkin_real);
+        let hOutReal = formatarHora(t.checkout_real);
+        
+        let statusReal = (t.checkin_real) ? `${hInReal} às ${t.checkout_real ? hOutReal : '...'}` : 'A aguardar';
+        let pPrev = t.tem_pausa ? `${t.minutos_pausa || 0} min` : '0 min';
+        let pRealFormat = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar';
 
         html += `
-        <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:12px; border-radius:6px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:5px;">
-                <b style="font-size:1.05rem; color:var(--primary-color);">${txtNome}</b>
+        <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:15px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:5px;">
+                <b style="font-size:1.1rem; color:var(--primary-color);">${txtNome}</b>
                 <span style="font-size:0.8rem; font-weight:bold; padding:4px 8px; border-radius:12px; background:#e2e8f0; color:#334155;">${statusInfo}</span>
             </div>
-            <div style="font-size:0.9rem; color:#475569; margin-bottom:12px; line-height:1.5;">
-                <b>Local:</b> ${sanitizarTexto(t.nome_unidade)}<br>
-                <b>Função:</b> ${sanitizarTexto(t.funcao)}<br>
-                <b>Horário:</b> ${t.hora_entrada} às ${t.hora_saida} ${txtP}<br>
-                ${t.checkin_real ? `<b>Registo de Ponto:</b> ${sanitizarTexto(t.checkin_real)} - ${sanitizarTexto(t.checkout_real) || '--:--'}` : ''}
+            
+            <div style="font-size:0.9rem; color:#475569; margin-bottom:15px; line-height:1.6;">
+                <div style="display:flex; align-items:center; gap:6px;">📍 <span>${sanitizarTexto(t.nome_unidade)}</span></div>
+                <div style="display:flex; align-items:center; gap:6px;">⚙️ <span>${sanitizarTexto(t.funcao)}</span></div>
             </div>
-            <div style="text-align:right; border-top:1px dashed #cbd5e1; padding-top:10px;">
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px; margin-bottom:10px;">
+                <div style="font-size:0.75rem; font-weight:bold; color:#64748b; margin-bottom:4px; display:flex; align-items:center; gap:5px;">🕒 TURNO</div>
+                <div style="font-size:0.85rem; color:#334155;">
+                    <div style="margin-bottom:3px;">Previsto: <b>${hIn} às ${hOut}</b></div>
+                    <div>Realizado: <b>${statusReal}</b></div>
+                </div>
+            </div>`;
+
+        if (t.tem_pausa) {
+            html += `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px; margin-bottom:15px;">
+                <div style="font-size:0.75rem; font-weight:bold; color:#64748b; margin-bottom:4px; display:flex; align-items:center; gap:5px;">☕ PAUSA</div>
+                <div style="font-size:0.85rem; color:#334155;">
+                    <div style="margin-bottom:3px;">Prevista: <b>${pPrev}</b></div>
+                    <div>Realizada: <b>${pRealFormat}</b></div>
+                </div>
+            </div>`;
+        } else {
+             html += `<div style="margin-bottom:15px;"></div>`;
+        }
+
+        html += `
+            <div style="text-align:right; border-top:1px dashed #cbd5e1; padding-top:12px; display:flex; justify-content:flex-end; gap:8px;">
         `;
 
         if (tipoAcesso === 'gestor') {
+            html += `<button class="btn-action" style="background:#f59e0b; color:white; border:none; font-size:0.85rem; font-weight:bold; padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="document.getElementById('modalVer').style.display='none'; irParaAgendamento('${dataStr}', ${t.id})">✏️ Editar Turno</button>`;
+            
             if (t.status_turno === 'A Aguardar Validação') {
-                html += `<button class="btn-action" style="background:var(--warning-color); color:black; font-size:0.85rem;" onclick="document.getElementById('modalVer').style.display='none'; abrirValidacaoPonto(${t.id})">🛡️ Validar Turno</button>`;
+                html += `<button class="btn-action" style="background:var(--warning-color); color:black; font-size:0.85rem; padding:8px 12px; border-radius:6px;" onclick="document.getElementById('modalVer').style.display='none'; abrirValidacaoPonto(${t.id})">🛡️ Validar Turno</button>`;
             }
         } else {
             html += `<button class="btn-action" style="background:var(--warning-color); color:black; font-size:0.85rem;" onclick="document.getElementById('modalVer').style.display='none'; irParaAgendamento('${dataStr}', ${t.id})">✏️ Editar Turno</button>`;
 
             if ((t.status_turno === 'Pendente' || isAdefinir) && window.whatsappAtivo) {
-                html += ` <button class="btn-action" style="background:#25D366; color:white; border:none; font-size:0.85rem;" onclick="enviarOfertaWhatsApp(${t.id})">📲 Ofertar via WhatsApp</button>`;
+                html += `<button class="btn-action" style="background:#25D366; color:white; border:none; font-size:0.85rem;" onclick="enviarOfertaWhatsApp(${t.id})">📲 Ofertar via WhatsApp</button>`;
             }
         }
 
