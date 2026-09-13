@@ -52,16 +52,11 @@ function gerarRelatorioApp() {
     let htmlContainerCartoes = '';
     let htmlNovoCorpoTabelaPrint = '';
 
-    // 📍 MOTORES DE EXTRAÇÃO (Partilhados com a Home para garantir a mesma leitura imune ao Fuso Horário)
+    // 📍 MOTOR DE EXTRAÇÃO CIRÚRGICO (Formato Literal, sem Fuso Horário Fantasma)
     const extrairHHMM = (valor) => {
         if (!valor) return '';
-        if (String(valor).includes('Z') || String(valor).includes('T')) {
-            const dataObj = new Date(valor);
-            if (!isNaN(dataObj)) {
-                return dataObj.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
-            }
-        }
         const vStr = String(valor);
+        if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
         if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
         return vStr.substring(0, 5);
     };
@@ -95,30 +90,43 @@ function gerarRelatorioApp() {
                 }
             }
 
-            // 📍 ESTRUTURA PADRONIZADA DE PREVISTO VS REALIZADO
+            // 📍 ESTRUTURA PADRONIZADA (Variáveis de Pausa Prevista e Real isoladas)
             const gpsLog = e.controlo_gps || ''; 
-            const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa) || isPausaReal(e.hora_inicio_pausa);
-            const hasFimPausa = isPausaReal(e.timestamp_fim_pausa) || isPausaReal(e.hora_fim_pausa);
-            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
-            const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
+            
+            // Pausas Reais (GPS)
+            const hasInicioReal = isPausaReal(e.timestamp_inicio_pausa);
+            const hasFimReal = isPausaReal(e.timestamp_fim_pausa);
+            const hIReal = extrairHHMM(e.timestamp_inicio_pausa);
+            const hFReal = extrairHHMM(e.timestamp_fim_pausa);
+
+            // Pausas Previstas (Agendadas)
+            const hIPrev = extrairHHMM(e.hora_inicio_pausa);
+            const hFPrev = extrairHHMM(e.hora_fim_pausa);
 
             const turnoPrevisto = `${e.hora_entrada || '--:--'} às ${e.hora_saida || '--:--'}`;
             let turnoReal = 'A aguardar';
             if (e.checkin_real && e.checkout_real) turnoReal = `${extrairHHMM(e.checkin_real)} às ${extrairHHMM(e.checkout_real)}`;
             else if (e.checkin_real) turnoReal = `Desde as ${extrairHHMM(e.checkin_real)}`;
 
-            const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : '-');
+            const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
+            
+            // Construção da Pausa Prevista (Idêntica ao Calendário)
+            let txtPausaPrevista = `${pMin} min`;
+            if (hIPrev && hFPrev) {
+                txtPausaPrevista = `${hIPrev} às ${hFPrev} (${pMin} min)`;
+            }
+
             let estadoPausa = 'A aguardar';
             let bgPausa = '#f1f5f9';
             let corPausa = '#475569';
             const pReal = e.minutos_pausa_realizados !== undefined ? e.minutos_pausa_realizados : '-';
 
             if (e.checkin_real && !e.checkout_real && gpsLog.includes('Pausa Início:')) {
-                estadoPausa = `Em curso (Início: ${hI})`;
+                estadoPausa = `Em curso (Início: ${hIReal || '--:--'})`;
                 bgPausa = '#fef3c7';
                 corPausa = '#b45309';
-            } else if (hasInicioPausa && hasFimPausa) {
-                estadoPausa = `${hI} às ${hF} (${pReal} min)`;
+            } else if (hasInicioReal && hasFimReal) {
+                estadoPausa = `${hIReal} às ${hFReal} (${pReal} min)`;
                 bgPausa = '#f0fdf4';
                 corPausa = '#166534';
             } else if (e.status_turno === 'Concluído' || e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
@@ -135,7 +143,7 @@ function gerarRelatorioApp() {
                     <div style="height:1px; background:#e2e8f0; width:100%;"></div>
                     <div style="background:${bgPausa}; padding:6px 8px; border-radius:6px;">
                         <div style="font-size:0.75rem; color:${corPausa}; font-weight:bold; text-transform:uppercase;">☕ Pausa</div>
-                        <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${pMin} min</span></div>
+                        <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${txtPausaPrevista}</span></div>
                         <div style="font-size:0.85rem; color:${corPausa};">Realizada: <span style="font-weight:600;">${estadoPausa}</span></div>
                     </div>
                 </div>
@@ -659,7 +667,7 @@ async function testarFolhaACT() {
                             '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center;">' + formataHoras(d.horas_normais) + '</td>' +
                             '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center;">' + formataHoras(d.horas_noturnas) + '</td>' +
                             '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center; color:#b45309; font-weight:bold;">' + formataHoras(d.horas_extra) + '</td>' +
-                            '<td style="border:1px solid #cbd5e1; padding: 4px; text-align: center; font-weight: bold; color: #1e293b;">' + formataHoras(d.efetivo_horas) + '</td>' +
+                            '<td style="padding: 4px; text-align: center; font-weight: bold; color: #1e293b; border: 1px solid #cbd5e1;">' + formataHoras(d.efetivo_horas) + '</td>' +
                             '</tr>';
                     });
 
