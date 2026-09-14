@@ -550,7 +550,7 @@ window.abrirResumoDia = function (dataStr) {
             }
         }
         
-        let pRealFormat = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar';
+        let pRealFormat = (!t.checkin_real) ? 'A aguardar' : ((t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar');
 
         html += `
         <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:15px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -941,7 +941,6 @@ function toggleMultiplo() {
     if (wrapper) { if (multi) wrapper.classList.add('active'); else wrapper.classList.remove('active'); }
 }
 
-
 function editarEscala(id) {
     const e = dadosEscalas.find(x => x.id === id); if (!e) return;
     const p = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
@@ -1038,6 +1037,16 @@ function cancelarEdicaoEscala() {
 
 document.getElementById('formEscala').addEventListener('submit', async (ev) => {
     ev.preventDefault();
+
+    // 📍 TRAVA DE SEGURANÇA DAS DATAS
+    const dataInCheck = document.getElementById('escDataIn').value;
+    const isMultiploCheck = document.getElementById('escMultiplo') && document.getElementById('escMultiplo').checked;
+    const dataAteCheck = document.getElementById('escDataAte') ? document.getElementById('escDataAte').value : '';
+    if (!dataInCheck || (isMultiploCheck && !dataAteCheck)) {
+        alert("⚠️ Por favor, preencha a data inicial e final do agendamento.");
+        return;
+    }
+
     const idEdit = document.getElementById('escIdEdit').value;
     const btn = document.getElementById('btnSalvarEscala');
     btn.innerText = "A processar...";
@@ -1303,7 +1312,7 @@ window.abrirResumoDia = function (dataStr) {
             }
         }
         
-        let pRealFormat = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar';
+        let pRealFormat = (!t.checkin_real) ? 'A aguardar' : ((t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar');
 
         html += `
         <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:15px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
