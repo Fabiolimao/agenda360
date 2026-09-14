@@ -1051,6 +1051,7 @@ document.getElementById('formEscala').addEventListener('submit', async (ev) => {
     const vFim = (fimInput && fimInput.value) ? fimInput.value : null;
 
     const baseDados = {
+        agencia_id: agendaId,
         unidade_id: document.getElementById('escUnidade').value,
         funcionario_id: funcEscolhido,
         funcao: document.getElementById('escFuncao').value,
