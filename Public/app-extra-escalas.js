@@ -134,7 +134,7 @@ function renderTurnosHome() {
         const fechouPausaReal = gpsLog.includes('Pausa Fim:');
         
         let txtPrevista = `${pMin} min`;
-        if (hasInicioPausa && hasFimPausa && !fezPausaReal) {
+        if (hasInicioPausa && hasFimPausa && !fezPausaReal && !fechouPausaReal) {
             // Se tem horas marcadas mas não há rasto de ação, é a previsão do Gestor
             txtPrevista = `${hI} às ${hF} (${pMin} min)`;
         }
@@ -143,7 +143,7 @@ function renderTurnosHome() {
             estadoPausa = `Em curso (Início: ${hI})`;
             bgPausa = '#fef3c7';
             corPausa = '#b45309';
-        } else if (fezPausaReal && fechouPausaReal) {
+        } else if (fechouPausaReal) { // Avalia cegamente o fim, garantindo que o cartão fica verde!
             estadoPausa = `${hI} às ${hF} (${pReal} min)`;
             bgPausa = '#f0fdf4';
             corPausa = '#166534';
@@ -177,13 +177,16 @@ function renderTurnosHome() {
             statusClass = 'curso';
             let botoesPausaHTML = '';
             
-            // 📍 CORREÇÃO 3: Proteção dos botões baseada na realidade (GPS) e não nas previsões
-            if (!fezPausaReal) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
+            // 📍 CORREÇÃO 3: Proteção dos botões da Pausa
+            if (fechouPausaReal) {
+                botoesPausaHTML = ''; // Esconde completamente os botões da pausa se já terminou
             } else if (fezPausaReal && !fechouPausaReal) {
                 botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
+            } else {
+                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
             }
             
+            // O Botão de checkout não foi alterado sob ordem estrita!
             btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
@@ -377,7 +380,7 @@ async function processarLoteMagico(loteIds) {
                 <div style="background:white; padding:30px; border-radius:24px; box-shadow:0 10px 25px rgba(0,0,0,0.1); width:100%; max-width:400px; border:2px solid var(--danger-color); text-align:center;">
                     <span style="font-size:3rem; display:block;">⚠️</span>
                     <h2 style="color:var(--danger-color); margin-top:15px; font-weight:800; letter-spacing:-1px;">PACOTE FECHADO</h2>
-                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste pacote já foram aceites por outros colegas ou cancelados pela Agência. Fica para a próxima!</p>
+                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste paquete já fueron aceites por outros colegas ou cancelados pela Agência. Fica para a próxima!</p>
                     <button class="btn-main" style="background:#64748b; width:100%;" onclick="fecharVagaMagica()">Ir para o meu Calendário</button>
                 </div>`;
             return;
