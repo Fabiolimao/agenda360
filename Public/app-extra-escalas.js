@@ -179,9 +179,9 @@ function renderTurnosHome() {
             
             // 📍 CORREÇÃO 3: Proteção dos botões baseada na realidade (GPS) e não nas previsões
             if (!fezPausaReal) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
+                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
             } else if (fezPausaReal && !fechouPausaReal) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
+                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
             }
             
             btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
