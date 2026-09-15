@@ -186,8 +186,8 @@ function renderTurnosHome() {
                 botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
             }
             
-            // O Botão de checkout não foi alterado sob ordem estrita!
-            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
+            // 📍 CORREÇÃO 4: Botão de Saída agora chama o GPS corretamente
+            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirJanelaGPS(${e.id}, 'saida')">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
             const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
@@ -380,7 +380,7 @@ async function processarLoteMagico(loteIds) {
                 <div style="background:white; padding:30px; border-radius:24px; box-shadow:0 10px 25px rgba(0,0,0,0.1); width:100%; max-width:400px; border:2px solid var(--danger-color); text-align:center;">
                     <span style="font-size:3rem; display:block;">⚠️</span>
                     <h2 style="color:var(--danger-color); margin-top:15px; font-weight:800; letter-spacing:-1px;">PACOTE FECHADO</h2>
-                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste paquete já fueron aceites por outros colegas ou cancelados pela Agência. Fica para a próxima!</p>
+                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste paquete já fueron aceites por otros colegas ou cancelados pela Agência. Fica para a próxima!</p>
                     <button class="btn-main" style="background:#64748b; width:100%;" onclick="fecharVagaMagica()">Ir para o meu Calendário</button>
                 </div>`;
             return;
