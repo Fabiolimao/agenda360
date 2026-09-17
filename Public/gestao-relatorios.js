@@ -136,6 +136,15 @@ function processarFiltroRelatorio() {
         return;
     }
 
+    // 📍 FUNÇÃO DE LIMPEZA DE SEGUNDOS
+    const extrairHHMM = (valor) => {
+        if (!valor) return null;
+        const vStr = String(valor);
+        if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
+        if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
+        return vStr.substring(0, 5);
+    };
+
     escalasFiltradas.forEach(e => {
         const p = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
         let txtPausa = 'Sem Pausa';
@@ -165,7 +174,13 @@ function processarFiltroRelatorio() {
         if (e.status_turno === 'Concluído') corStatus = 'color:var(--success-color);';
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') corStatus = 'color:var(--danger-color);';
 
-        // 📍 CORREÇÃO DA PAUSA FANTASMA NO EXTRATO: Força o bloqueio de horas e pausas na falta
+        // 📍 APLICAÇÃO DA MÁSCARA VISUAL 
+        const hInPrev = extrairHHMM(e.hora_entrada) || '--:--';
+        const hOutPrev = extrairHHMM(e.hora_saida) || '--:--';
+        const hInReal = extrairHHMM(e.checkin_real) || '--:--';
+        const hOutReal = extrairHHMM(e.checkout_real) || '--:--';
+
+        // 📍 CORREÇÃO DA PAUSA FANTASMA NO EXTRATO
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') {
             txtHoras = '<span style="color:var(--danger-color); font-weight:bold;">00:00 h</span>';
             estiloLinha = 'style="background: #fef2f2;"';
@@ -174,8 +189,8 @@ function processarFiltroRelatorio() {
             txtHoras = '<span style="color:var(--danger-color); font-weight:bold;">⚠️ Ajuste</span>';
             estiloLinha = 'style="background: #fffbeb;"';
         } else if (e.checkin_real && e.checkout_real) {
-            let [hIn, mIn] = e.checkin_real.split(':').map(Number);
-            let [hOut, mOut] = e.checkout_real.split(':').map(Number);
+            let [hIn, mIn] = hInReal.split(':').map(Number);
+            let [hOut, mOut] = hOutReal.split(':').map(Number);
             let minIn = hIn * 60 + mIn;
             let minOut = hOut * 60 + mOut;
             if (minOut < minIn) minOut += 24 * 60;
@@ -190,7 +205,7 @@ function processarFiltroRelatorio() {
         let isAdefinir = (!e.funcionario_id || String(e.funcionario_id) === 'A_DEFINIR' || String(e.funcionario_id) === 'null');
         let txtNome = isAdefinir ? '<span style="color:var(--warning-color);">⏳ A Definir (Turno em Aberto)</span>' : (e.nome_func || 'Desconhecido');
 
-        tbody.innerHTML += `<tr ${estiloLinha}><td data-label="Localização"><b>${e.nome_empresa}</b><br><small style="color:#64748b;">${e.morada_unidade || '-'}, ${e.cidade_unidade || ''}</small></td><td data-label="Funcionário"><b>${txtNome}</b><br><small style="color:var(--primary-color); font-weight:600;">${e.funcao}</small></td><td data-label="Data">${e.data_inicio}</td><td data-label="Estado"><span style="${corStatus} font-weight:bold;">${e.status_turno}</span></td><td data-label="Entrada Real"><span style="font-size:0.8rem;color:#64748b;">Previsto: ${e.hora_entrada}</span><br>Real: <b>${e.checkin_real || '--:--'}</b></td><td data-label="Saída Real"><span style="font-size:0.8rem;color:#64748b;">Previsto: ${e.hora_saida}</span><br>Real: <b>${e.checkout_real || '--:--'}</b></td><td data-label="Pausa">${txtPausa}</td><td data-label="Horas Efetivas" style="text-align: right; font-weight: bold;">${txtHoras}</td></tr>`;
+        tbody.innerHTML += `<tr ${estiloLinha}><td data-label="Localização"><b>${e.nome_empresa}</b><br><small style="color:#64748b;">${e.morada_unidade || '-'}, ${e.cidade_unidade || ''}</small></td><td data-label="Funcionário"><b>${txtNome}</b><br><small style="color:var(--primary-color); font-weight:600;">${e.funcao}</small></td><td data-label="Data">${e.data_inicio}</td><td data-label="Estado"><span style="${corStatus} font-weight:bold;">${e.status_turno}</span></td><td data-label="Entrada Real"><span style="font-size:0.8rem;color:#64748b;">Previsto: ${hInPrev}</span><br>Real: <b>${hInReal}</b></td><td data-label="Saída Real"><span style="font-size:0.8rem;color:#64748b;">Previsto: ${hOutPrev}</span><br>Real: <b>${hOutReal}</b></td><td data-label="Pausa">${txtPausa}</td><td data-label="Horas Efetivas" style="text-align: right; font-weight: bold;">${txtHoras}</td></tr>`;
     });
 
     document.getElementById('totalHorasRelatorio').innerText = formatarMinutosParaHHMM(acumuladorMinutos);
@@ -206,7 +221,7 @@ function processarFiltroRelatorio() {
             if (assinaturaAtiva) {
                 blocoAss.innerHTML = `<h3 style="font-size: 11pt; color: var(--success-color); margin-bottom: 10px;">✅ DECLARAÇÃO DE TEMPOS DE TRABALHO ASSINADA DIGITALMENTE</h3><div style="font-size: 9pt; color: #475569; text-align: justify; line-height: 1.5; margin-bottom: 20px;"><p>Nos termos e para os efeitos da legislação laboral, o trabalhador validou através de autenticação pessoal que o presente extrato reflete com exatidão os seus tempos de trabalho.</p></div><p style="font-size: 10pt; color: #0f172a; margin-bottom: 10px;"><strong>Funcionário:</strong> ${nomeFunc}</p><div style="margin-top: 20px; padding: 15px; background: #f0fdf4; border: 1px solid #10b981; border-radius: 6px; text-align: center;"><p style="margin: 0; font-size: 12pt; font-weight: bold; color: #0f172a;">${assinaturaAtiva.carimbo_digital}</p><p style="margin: 5px 0 0 0; font-size: 8pt; color: #64748b;">(Carimbo Criptográfico Inviolável)</p></div>`;
             } else {
-                blocoAss.innerHTML = `<h3 style="font-size: 11pt; color: var(--primary-color); margin-bottom: 10px;">DECLARAÇÃO DE VALIDAÇÃO DE TEMPOS DE TRABALHO</h3><div style="font-size: 9pt; color: #475569; text-align: justify; line-height: 1.5; margin-bottom: 20px;"><p>Nos termos da lei, declaro que tomei conocimiento e concordo expressamente com o presente extrato, confirmando a sua exatidão.</p></div><p style="font-size: 10pt; color: #0f172a; margin-bottom: 30px;"><strong>Data:</strong> ____ / ____ / ________</p><p style="font-size: 10pt; color: #0f172a;"><strong>Assinatura:</strong> ___________________________________________________________</p>`;
+                blocoAss.innerHTML = `<h3 style="font-size: 11pt; color: var(--primary-color); margin-bottom: 10px;">DECLARAÇÃO DE VALIDAÇÃO DE TEMPOS DE TRABALHO</h3><div style="font-size: 9pt; color: #475569; text-align: justify; line-height: 1.5; margin-bottom: 20px;"><p>Nos termos da lei, declaro que tomei conhecimento e concordo expressamente com o presente extrato, confirmando a sua exatidão.</p></div><p style="font-size: 10pt; color: #0f172a; margin-bottom: 30px;"><strong>Data:</strong> ____ / ____ / ________</p><p style="font-size: 10pt; color: #0f172a;"><strong>Assinatura:</strong> ___________________________________________________________</p>`;
             }
             blocoAss.style.display = 'block';
         } else {
@@ -340,13 +355,23 @@ window.gerarGrelhaMensal = async function() {
                 totExtra += d.horas_extra || 0;
                 totEfetivas += d.efetivo_horas || 0;
                 
+                // 📍 CORREÇÃO: Limpar os segundos da coluna "Entrada/Saída" na Grelha Oficial
                 var detalheFormatado = d.detalhe;
-                if (d.detalhe === '-') detalheFormatado = (d.tipo === 'F') ? 'Folga' : d.tipo;
+                if (d.tipo === 'F') {
+                    detalheFormatado = 'Folga';
+                } else if (d.detalhe && d.detalhe.indexOf('-') !== -1) {
+                    var pts = d.detalhe.split('-');
+                    var inClean = pts[0].trim().substring(0, 5);
+                    var outClean = pts[1].trim().substring(0, 5);
+                    detalheFormatado = inClean + ' - ' + outClean;
+                } else if (d.detalhe === '-') {
+                    detalheFormatado = d.tipo;
+                }
 
                 var txtPausa = '00:00';
                 
-                // 📍 CORREÇÃO: Prevenir cálculo de pausas fantasma
-                if (d.tipo !== 'F' && d.tipo !== 'Falta' && d.tipo !== 'Cancelado' && d.detalhe && d.detalhe.indexOf('-') !== -1) {
+                // 📍 CORREÇÃO DEFINITIVA: O PDF só calcula a pausa se o Servidor enviar Horas Efetivas!
+                if (d.efetivo_horas > 0 && d.detalhe && d.detalhe.indexOf('-') !== -1) {
                     var pts = d.detalhe.split('-');
                     if (pts.length === 2) {
                         var inParts = pts[0].trim().split(':');
@@ -371,6 +396,7 @@ window.gerarGrelhaMensal = async function() {
                         }
                     }
                 } else {
+                    // Impede o cálculo cego se as horas efetivas forem nulas
                     txtPausa = '-';
                 }
 
