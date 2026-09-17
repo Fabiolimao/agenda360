@@ -93,11 +93,8 @@ function renderTurnosHome() {
     container.innerHTML = '';
     listagem.forEach(e => {
         let btnHTML = ''; let statusClass = 'agendado';
-        
-        // 📍 O NOVO MOTOR: Usamos o rasto deixado pelo servidor para saber a verdade absoluta
-        const gpsLog = e.controlo_gps || ''; 
 
-        // 📍 CORREÇÃO 1: Extração literal da hora para matar o fantasma do Fuso Horário
+        // 📍 BLINDAGEM MÁXIMA DE FUSO HORÁRIO E LIMPEZA DE SEGUNDOS EXCEDENTES
         const extrairHHMM = (valor) => {
             if (!valor) return '';
             const vStr = String(valor);
@@ -106,45 +103,39 @@ function renderTurnosHome() {
             return vStr.substring(0, 5);
         };
 
-        const isPausaReal = (val) => {
-            if (!val) return false;
-            const s = String(val).trim().toLowerCase();
-            return s !== '' && s !== 'null' && s !== 'undefined';
-        };
+        // 📍 CORREÇÃO 1: Limpeza dos Cabeçalhos para matar o erro "08:00:00"
+        const hInLimpa = extrairHHMM(e.hora_entrada) || '--:--';
+        const hOutLimpa = extrairHHMM(e.hora_saida) || '--:--';
+        const turnoPrevisto = `${hInLimpa} às ${hOutLimpa}`;
 
-        const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa) || isPausaReal(e.hora_inicio_pausa);
-        const hasFimPausa = isPausaReal(e.timestamp_fim_pausa) || isPausaReal(e.hora_fim_pausa);
+        // 📍 CORREÇÃO 2: Isolamento Absoluto (Previsão vs. Timestamp Real do GPS)
+        const hInPausaReal = extrairHHMM(e.timestamp_inicio_pausa);
+        const hFimPausaReal = extrairHHMM(e.timestamp_fim_pausa);
+        const pReal = (e.minutos_pausa_realizados !== undefined && e.minutos_pausa_realizados !== null) ? e.minutos_pausa_realizados : '-';
+        const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
 
-        const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
-        const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
-
-        const turnoPrevisto = `${e.hora_entrada || '--:--'} às ${e.hora_saida || '--:--'}`;
+        let txtPausaCard = '';
+        if (hInPausaReal && hFimPausaReal) {
+            txtPausaCard = `<div class="shift-detail" style="color:#166534; font-weight:bold; margin-top:4px; background:#f0fdf4; padding:4px 8px; border-radius:4px; display:inline-block;">☕ Pausa: ${hInPausaReal} - ${hFimPausaReal} (${pReal} min)</div>`;
+        } else if (hInPausaReal && !hFimPausaReal) {
+            txtPausaCard = `<div class="shift-detail" style="color:#b45309; font-weight:bold; margin-top:4px; background:#fef3c7; padding:4px 8px; border-radius:4px; display:inline-block;">⏸️ Em Pausa (início ${hInPausaReal})</div>`;
+        }
+        
         let turnoReal = 'A aguardar';
         if (e.checkin_real && e.checkout_real) turnoReal = `${extrairHHMM(e.checkin_real)} às ${extrairHHMM(e.checkout_real)}`;
         else if (e.checkin_real) turnoReal = `Desde as ${extrairHHMM(e.checkin_real)}`;
 
-        const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : '-');
         let estadoPausa = 'A aguardar';
         let bgPausa = '#f1f5f9';
         let corPausa = '#475569';
-        const pReal = e.minutos_pausa_realizados !== undefined ? e.minutos_pausa_realizados : '-';
-
-        // 📍 CORREÇÃO 2: Cruzamento com GPS Log para garantir que a pausa foi mesmo executada
-        const fezPausaReal = gpsLog.includes('Pausa Início:');
-        const fechouPausaReal = gpsLog.includes('Pausa Fim:');
-        
         let txtPrevista = `${pMin} min`;
-        if (hasInicioPausa && hasFimPausa && !fezPausaReal && !fechouPausaReal) {
-            // Se tem horas marcadas mas não há rasto de ação, é a previsão do Gestor
-            txtPrevista = `${hI} às ${hF} (${pMin} min)`;
-        }
 
-        if (e.checkin_real && !e.checkout_real && fezPausaReal && !fechouPausaReal) {
-            estadoPausa = `Em curso (Início: ${hI})`;
+        if (e.checkin_real && !e.checkout_real && hInPausaReal && !hFimPausaReal) {
+            estadoPausa = `Em curso (Início: ${hInPausaReal})`;
             bgPausa = '#fef3c7';
             corPausa = '#b45309';
-        } else if (fechouPausaReal) { // Avalia cegamente o fim, garantindo que o cartão fica verde!
-            estadoPausa = `${hI} às ${hF} (${pReal} min)`;
+        } else if (hInPausaReal && hFimPausaReal) {
+            estadoPausa = `${hInPausaReal} às ${hFimPausaReal} (${pReal} min)`;
             bgPausa = '#f0fdf4';
             corPausa = '#166534';
         } else if (e.status_turno === 'Concluído' || e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') {
@@ -158,12 +149,14 @@ function renderTurnosHome() {
                     <div style="font-size:0.85rem; color:#475569;">Previsto: <span style="color:#0f172a; font-weight:600;">${turnoPrevisto}</span></div>
                     <div style="font-size:0.85rem; color:#475569;">Realizado: <span style="color:#0f172a; font-weight:600;">${turnoReal}</span></div>
                 </div>
+                ${e.tem_pausa ? `
                 <div style="height:1px; background:#e2e8f0; width:100%;"></div>
                 <div style="background:${bgPausa}; padding:6px 8px; border-radius:6px;">
                     <div style="font-size:0.75rem; color:${corPausa}; font-weight:bold; text-transform:uppercase;">☕ Pausa</div>
                     <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${txtPrevista}</span></div>
                     <div style="font-size:0.85rem; color:${corPausa};">Realizada: <span style="font-weight:600;">${estadoPausa}</span></div>
                 </div>
+                ` : ''}
             </div>
         `;
 
@@ -177,17 +170,15 @@ function renderTurnosHome() {
             statusClass = 'curso';
             let botoesPausaHTML = '';
             
-            // 📍 CORREÇÃO 3: Proteção dos botões da Pausa
-            if (fechouPausaReal) {
-                botoesPausaHTML = ''; // Esconde completamente os botões da pausa se já terminou
-            } else if (fezPausaReal && !fechouPausaReal) {
-                botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
-            } else {
-                botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="abrirJanelaGPS(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
+            // 📍 CORREÇÃO 3: Lógica infalível de botões guiada pelas timestamps de GPS
+            if (e.tem_pausa) {
+                if (!hInPausaReal) {
+                    botoesPausaHTML = `<button class="btn-point" style="background:#d97706; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'inicio_pausa')">☕ Iniciar Pausa</button>`;
+                } else if (hInPausaReal && !hFimPausaReal) {
+                    botoesPausaHTML = `<button class="btn-point" style="background:#2563eb; color:white; margin-bottom:8px; font-weight:bold;" onclick="executarAcaoPausa(${e.id}, 'fim_pausa')">▶️ Terminar Pausa</button>`;
+                }
             }
-            
-            // 📍 CORREÇÃO 4: Botão de Saída agora chama o GPS corretamente
-            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirJanelaGPS(${e.id}, 'saida')">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
+            btnHTML = `${botoesPausaHTML}<button class="btn-point btn-out" onclick="abrirModalCheckout(${e.id})">${dic[curLang]['js_btn_out'] || 'Picar Saída'}</button>`;
         } else {
             const agora = new Date();
             const [anoT, mesT, diaT] = e.data_inicio.split('-').map(Number);
@@ -200,16 +191,7 @@ function renderTurnosHome() {
             } else if (diffMinutos < -120) {
                 statusClass = 'falta';
                 btnHTML = `<div style="text-align:center; font-weight:bold; color:var(--danger-color); margin-top:10px;">Falta (Expirado)</div>`;
-                
-                if(e.status_turno !== 'Falta') {
-                    const token = localStorage.getItem('agenda360_func_token');
-                    fetch(`/api/escalas/${e.id}`, { 
-                        method: 'PUT', 
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
-                        body: JSON.stringify({ status_turno: 'Falta' }) 
-                    }).catch(()=>{});
-                    e.status_turno = 'Falta'; 
-                }
+                e.status_turno = 'Falta'; 
             } else {
                 btnHTML = `<button class="btn-point btn-in" onclick="abrirJanelaGPS(${e.id}, 'entrada')">${dic[curLang]['js_btn_in'] || 'Picar Entrada'}</button>`;
             }
@@ -217,10 +199,11 @@ function renderTurnosHome() {
 
         container.innerHTML += `
             <div class="shift-card ${statusClass}">
-                <div class="shift-header"><span>📅 ${e.data_inicio}</span><span>${e.hora_entrada} - ${e.hora_saida}</span></div>
+                <div class="shift-header"><span>📅 ${e.data_inicio}</span><span>${hInLimpa} - ${hOutLimpa}</span></div>
                 <div class="shift-title">${e.nome_unidade}</div>
                 <div class="shift-detail">📍 ${e.rua || '-'}, ${e.cidade || ''}</div>
                 <div class="shift-detail">⚙️ ${e.funcao}</div>
+                ${txtPausaCard}
                 ${painelPadraoHTML}
                 ${btnHTML}
             </div>
@@ -380,7 +363,7 @@ async function processarLoteMagico(loteIds) {
                 <div style="background:white; padding:30px; border-radius:24px; box-shadow:0 10px 25px rgba(0,0,0,0.1); width:100%; max-width:400px; border:2px solid var(--danger-color); text-align:center;">
                     <span style="font-size:3rem; display:block;">⚠️</span>
                     <h2 style="color:var(--danger-color); margin-top:15px; font-weight:800; letter-spacing:-1px;">PACOTE FECHADO</h2>
-                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste paquete já fueron aceites por otros colegas ou cancelados pela Agência. Fica para a próxima!</p>
+                    <p style="color:#475569; margin-bottom:25px; line-height:1.5;">Todos os turnos deste pacote já foram aceites por outros colegas ou cancelados pela Agência. Fica para a próxima!</p>
                     <button class="btn-main" style="background:#64748b; width:100%;" onclick="fecharVagaMagica()">Ir para o meu Calendário</button>
                 </div>`;
             return;
