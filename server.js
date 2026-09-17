@@ -151,6 +151,18 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
                         normal = efetivo - noturno;
                         if (normal < 0) normal = 0;
                     }
+                } else {
+                    // 📍 CORREÇÃO DEFINITIVA (FOLHA DE PONTO ACT): 
+                    // Se o turno NÃO está concluído (ex: Agendado, Pendente, A Aguardar Validação),
+                    // TEMOS de zerar a previsão para impedir que o frontend subtraia 0 horas efetivas das
+                    // 9 horas previstas e deduza automaticamente "09:00" de pausa fantasma.
+                    previsto = 0; 
+                    efetivo = 0;
+                    if (r.status_turno === 'A Aguardar Validação') {
+                        detalheStr = 'A Aguardar Validação';
+                    } else if (r.status_turno === 'Agendamento Não efetivado') {
+                        detalheStr = 'Não Efetivado';
+                    }
                 }
             }
             
@@ -868,8 +880,6 @@ app.put('/api/escalas/:id', verificarTokenWeb, async (req, res) => {
     if (travaAgendamento.has(lockKey)) return res.status(429).json({ erro: 'A processar edição. Aguarde.' });
     travaAgendamento.add(lockKey);
     try {
-        const tsInPausa = d.timestamp_inicio_pausa || null;
-        const tsFimPausa = d.timestamp_fim_pausa || null;
         const funcIdParaDB = (!d.funcionario_id || d.funcionario_id === 'A_DEFINIR') ? null : parseInt(d.funcionario_id, 10);
         
         let s = d.status_turno || 'Agendado'; 
@@ -911,29 +921,14 @@ app.put('/api/escalas/:id', verificarTokenWeb, async (req, res) => {
             }
         }
         
+        // 📍 CORREÇÃO DEFINITIVA: Isolamento Total das Variáveis (Realidade vs Previsão)
+        // Removemos a lógica que injetava horários teóricos (hora_inicio_pausa) nos carimbos de GPS reais.
         let finalTsInPausa = existing ? existing.timestamp_inicio_pausa : null;
         let finalTsFimPausa = existing ? existing.timestamp_fim_pausa : null;
 
-        if (d.hora_inicio_pausa) {
-            let pDtIn = new Date(`${d.data_inicio}T${d.hora_inicio_pausa}:00`);
-            let baseIn = new Date(`${d.data_inicio}T${d.hora_entrada || '00:00'}:00`);
-            if (pDtIn < baseIn) pDtIn.setDate(pDtIn.getDate() + 1);
-            finalTsInPausa = pDtIn.toISOString();
-        } else if (d.hora_inicio_pausa === '') {
-            finalTsInPausa = null;
-        }
-
-        if (d.hora_fim_pausa) {
-            let pDtFim = new Date(`${d.data_inicio}T${d.hora_fim_pausa}:00`);
-            let baseIn = new Date(`${d.data_inicio}T${d.hora_entrada || '00:00'}:00`);
-            if (pDtFim < baseIn) pDtFim.setDate(pDtFim.getDate() + 1);
-            if (finalTsInPausa && pDtFim < new Date(finalTsInPausa)) {
-                pDtFim.setDate(pDtFim.getDate() + 1);
-            }
-            finalTsFimPausa = pDtFim.toISOString();
-        } else if (d.hora_fim_pausa === '') {
-            finalTsFimPausa = null;
-        }
+        // Apenas aceitamos modificações aos timestamps se vierem explicitamente como timestamps (picagens puras)
+        if (d.timestamp_inicio_pausa !== undefined) finalTsInPausa = d.timestamp_inicio_pausa || null;
+        if (d.timestamp_fim_pausa !== undefined) finalTsFimPausa = d.timestamp_fim_pausa || null;
         
         const calc = calcularDiscriminacaoHoras(d.data_inicio, d.checkin_real, dataFimCalculada, d.checkout_real, finalTsInPausa, finalTsFimPausa);
         
