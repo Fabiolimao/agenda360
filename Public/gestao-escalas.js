@@ -537,20 +537,21 @@ window.abrirResumoDia = function (dataStr) {
         
         let statusReal = (t.checkin_real) ? `${hInReal} às ${t.checkout_real ? hOutReal : '...'}` : 'A aguardar';
         
-        // 📍 O NOVO CORAÇÃO DA PAUSA PREVISTA
-        let pIn = extrairHHMM(t.timestamp_inicio_pausa) || extrairHHMM(t.hora_inicio_pausa);
-        let pOut = extrairHHMM(t.timestamp_fim_pausa) || extrairHHMM(t.hora_fim_pausa);
-        let pPrev = '0 min';
+        // 📍 SEPARAÇÃO DEFINITIVA DAS PAUSAS (Previsão vs Realidade)
+        let pPrev = t.tem_pausa ? `${t.minutos_pausa || 0} min` : '0 min';
         
-        if (t.tem_pausa) {
-            if (pIn && pOut) {
-                pPrev = `${pIn} às ${pOut} (${t.minutos_pausa || 0} min)`;
-            } else {
-                pPrev = `${t.minutos_pausa || 0} min`;
+        let pRealFormat = 'A aguardar';
+        if (t.checkin_real) {
+            let pInReal = extrairHHMM(t.timestamp_inicio_pausa);
+            let pOutReal = extrairHHMM(t.timestamp_fim_pausa);
+            let pTotalReal = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : '...';
+            
+            if (pInReal) {
+                pRealFormat = `${pInReal} às ${pOutReal ? pOutReal : '...'} (${pTotalReal})`;
+            } else if (t.checkout_real) {
+                pRealFormat = 'Sem registo';
             }
         }
-        
-        let pRealFormat = (!t.checkin_real) ? 'A aguardar' : ((t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar');
 
         html += `
         <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:15px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -1299,20 +1300,21 @@ window.abrirResumoDia = function (dataStr) {
         
         let statusReal = (t.checkin_real) ? `${hInReal} às ${t.checkout_real ? hOutReal : '...'}` : 'A aguardar';
         
-        // 📍 O NOVO CORAÇÃO DA PAUSA PREVISTA
-        let pIn = extrairHHMM(t.timestamp_inicio_pausa) || extrairHHMM(t.hora_inicio_pausa);
-        let pOut = extrairHHMM(t.timestamp_fim_pausa) || extrairHHMM(t.hora_fim_pausa);
-        let pPrev = '0 min';
+        // 📍 SEPARAÇÃO DEFINITIVA DAS PAUSAS (Previsão vs Realidade)
+        let pPrev = t.tem_pausa ? `${t.minutos_pausa || 0} min` : '0 min';
         
-        if (t.tem_pausa) {
-            if (pIn && pOut) {
-                pPrev = `${pIn} às ${pOut} (${t.minutos_pausa || 0} min)`;
-            } else {
-                pPrev = `${t.minutos_pausa || 0} min`;
+        let pRealFormat = 'A aguardar';
+        if (t.checkin_real) {
+            let pInReal = extrairHHMM(t.timestamp_inicio_pausa);
+            let pOutReal = extrairHHMM(t.timestamp_fim_pausa);
+            let pTotalReal = (t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : '...';
+            
+            if (pInReal) {
+                pRealFormat = `${pInReal} às ${pOutReal ? pOutReal : '...'} (${pTotalReal})`;
+            } else if (t.checkout_real) {
+                pRealFormat = 'Sem registo';
             }
         }
-        
-        let pRealFormat = (!t.checkin_real) ? 'A aguardar' : ((t.minutos_pausa_realizados !== null && t.minutos_pausa_realizados !== undefined) ? `${t.minutos_pausa_realizados} min` : 'A aguardar');
 
         html += `
         <div style="background:${corFundo}; border:1px solid #e2e8f0; border-left:4px solid ${corBorda}; padding:15px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
