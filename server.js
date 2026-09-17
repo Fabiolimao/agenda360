@@ -42,11 +42,12 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
         // 1. Número de dias no mês
         const numDias = new Date(ano, mes, 0).getDate();
         
-        // 2. Extração de Dados Isolada
+        // 2. Extração de Dados Isolada (📍 CORREÇÃO: Adicionadas as variáveis de Pausa)
         const query = `
             SELECT 
                 e.id as escala_id, e.data_inicio, e.hora_entrada, e.hora_saida, 
                 e.checkin_real, e.checkout_real, e.status_turno, e.tipo_ausencia, e.funcao,
+                e.tem_pausa, e.minutos_pausa, e.timestamp_inicio_pausa, e.timestamp_fim_pausa,
                 u.id as unidade_id, u.nome_unidade,
                 c.id as cliente_id, c.nome_empresa
             FROM escalas e
@@ -131,6 +132,10 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
             } else {
                 if (r.hora_entrada && r.hora_saida) {
                     previsto = calcDiffMin(parseTime(r.hora_entrada), parseTime(r.hora_saida));
+                    // 📍 CORREÇÃO: Deduzir a pausa teórica da previsão!
+                    if (r.tem_pausa) {
+                        previsto = Math.max(0, previsto - (r.minutos_pausa || 0));
+                    }
                 }
                 
                 if (r.status_turno === 'Concluído' || r.status_turno === 'Validado') {
@@ -141,7 +146,22 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
                         const startMin = parseTime(startStr);
                         const endMin = parseTime(endStr);
                         
-                        efetivo = calcDiffMin(startMin, endMin);
+                        // 📍 CORREÇÃO: O MOTOR AGORA DEDUZ A PAUSA NAS HORAS EFETIVAS (FIM DOS 00:00)
+                        let minPausaDeduida = 0;
+                        if (r.tem_pausa) {
+                            if (r.timestamp_inicio_pausa && r.timestamp_fim_pausa) {
+                                let pIn = new Date(r.timestamp_inicio_pausa);
+                                let pOut = new Date(r.timestamp_fim_pausa);
+                                if (pOut > pIn) {
+                                    minPausaDeduida = Math.round((pOut - pIn) / (1000 * 60));
+                                }
+                            } else {
+                                minPausaDeduida = r.minutos_pausa || 0;
+                            }
+                        }
+
+                        let brutoMinutos = calcDiffMin(startMin, endMin);
+                        efetivo = Math.max(0, brutoMinutos - minPausaDeduida);
                         noturno = calcNoturno(startMin, endMin);
                         
                         if (efetivo > previsto && previsto > 0) {
@@ -153,9 +173,6 @@ app.get('/api/folha-ponto/trabalhador/:id/:ano/:mes', verificarTokenWeb, async (
                     }
                 } else {
                     // 📍 CORREÇÃO DEFINITIVA (FOLHA DE PONTO ACT): 
-                    // Se o turno NÃO está concluído (ex: Agendado, Pendente, A Aguardar Validação),
-                    // TEMOS de zerar a previsão para impedir que o frontend subtraia 0 horas efetivas das
-                    // 9 horas previstas e deduza automaticamente "09:00" de pausa fantasma.
                     previsto = 0; 
                     efetivo = 0;
                     if (r.status_turno === 'A Aguardar Validação') {
@@ -729,6 +746,7 @@ app.post('/api/funcionarios/status', verificarTokenWeb, (req, res) => {
 
 app.delete('/api/funcionarios/:id', verificarTokenWeb, async (req, res) => { const funcIdInt = parseInt(req.params.id, 10); const funcIdStr = String(req.params.id); try { const escalhasRow = await pool.query(`SELECT COUNT(*) as total FROM escalas WHERE funcionario_id = $1 OR CAST(funcionario_id AS VARCHAR) = $2`, [funcIdInt, funcIdStr]); const assinaturasRow = await pool.query(`SELECT COUNT(*) as total FROM assinaturas_mensais WHERE funcionario_id = $1 OR CAST(funcionario_id AS VARCHAR) = $2`, [funcIdInt, funcIdStr]); const escalasCount = parseInt(escalhasRow.rows[0].total); const assinaturasCount = parseInt(assinaturasRow.rows[0].total); if (escalasCount > 0 || assinaturasCount > 0) { return res.status(403).json({ erro: `Atenção: Este trabalhador possui histórico laboral (${escalasCount} turnos). Por exigência legal da ACT (retenção por 5 anos), a ficha não pode ser eliminada.` }); } db.run(`DELETE FROM funcionarios WHERE id=?`, [funcIdInt], errDel => { if(errDel) return handleError(res, errDel); res.json({ mensagem: 'Ficha apagada com sucesso!' }); }); } catch (error) { handleError(res, error); } });
 
+// 📍 MÓDULO DE RELATÓRIOS E CONSULTAS: PAUSAS INTEGRADAS
 app.get('/api/escalas/agencia/:agencia_id', verificarTokenWeb, (req, res) => { 
     let sql = `SELECT e.*, f.nome_completo as nome_func, u.nome_unidade, c.nome_empresa,
                ROUND(EXTRACT(EPOCH FROM (e.timestamp_fim_pausa - e.timestamp_inicio_pausa))/60) as minutos_pausa_realizados,
@@ -921,12 +939,9 @@ app.put('/api/escalas/:id', verificarTokenWeb, async (req, res) => {
             }
         }
         
-        // 📍 CORREÇÃO DEFINITIVA: Isolamento Total das Variáveis (Realidade vs Previsão)
-        // Removemos a lógica que injetava horários teóricos (hora_inicio_pausa) nos carimbos de GPS reais.
         let finalTsInPausa = existing ? existing.timestamp_inicio_pausa : null;
         let finalTsFimPausa = existing ? existing.timestamp_fim_pausa : null;
 
-        // Apenas aceitamos modificações aos timestamps se vierem explicitamente como timestamps (picagens puras)
         if (d.timestamp_inicio_pausa !== undefined) finalTsInPausa = d.timestamp_inicio_pausa || null;
         if (d.timestamp_fim_pausa !== undefined) finalTsFimPausa = d.timestamp_fim_pausa || null;
         
@@ -961,7 +976,6 @@ app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => {
     
     db.get(`SELECT e.data_inicio, e.data_fim, e.hora_entrada, e.hora_saida, e.checkin_real, e.timestamp_inicio_pausa, e.timestamp_fim_pausa, u.exige_validacao FROM escalas e JOIN unidades u ON e.unidade_id = u.id WHERE e.id = ?`, [parseInt(escala_id, 10)], (err, turno) => { 
         
-        // 📍 BLINDAGEM 1: Imprime a verdade absoluta no log da VPS e devolve resposta JSON correta à App
         if (err) {
             console.error("🚨 ERRO FATAL DE SQL NO PONTO:", err);
             return res.status(500).json({ erro: 'Erro na Base de Dados do Servidor.' });
@@ -971,7 +985,6 @@ app.post('/api/escalas/ponto', verificarTokenWeb, (req, res) => {
             return res.status(404).json({ erro: 'Turno não encontrado ou Unidade inválida.' });
         }
 
-        // 📍 BLINDAGEM 2: Conversão segura para impedir o "crash" do PostgreSQL no .split()
         const dataInicioStr = (typeof turno.data_inicio === 'object' && turno.data_inicio !== null) 
             ? turno.data_inicio.toISOString().split('T')[0] 
             : String(turno.data_inicio);
@@ -1047,104 +1060,17 @@ app.post('/api/escalas/ausencia', verificarTokenWeb, async (req, res) => {
 });
 app.put('/api/escalas/:id/validar-cliente', verificarTokenWeb, (req, res) => { if(req.user.tipo !== 'gestor' && req.user.tipo !== 'admin' && req.user.tipo !== 'master') return res.status(403).json({erro: 'Sem permissão.'}); const obs = req.body.obs_cliente || ''; db.run(`UPDATE escalas SET validado_cliente = 1, obs_cliente = ?, status_turno = 'Concluído' WHERE id = ?`, [obs, parseInt(req.params.id, 10)], err => { if(err) return handleError(res, err); res.json({ mensagem: 'Turno validado pelo cliente com sucesso!' }); }); });
 
-app.get('/api/escalas/vaga/:id', verificarTokenWeb, (req, res) => {
-    const escalaId = parseInt(req.params.id, 10);
-    const query = `
-        SELECT e.*, u.nome_unidade, u.rua, u.cidade 
-        FROM escalas e
-        LEFT JOIN unidades u ON e.unidade_id = u.id
-        WHERE e.id = ?
-    `;
-    
-    db.get(query, [escalaId], (err, row) => {
-        if (err) return handleError(res, err, 'Erro ao consultar a base de dados.');
-        if (!row) return res.status(404).json({ erro: 'Vaga inexistente.', status_turno: 'Fechada' });
-        res.json(row);
-    });
-});
-
-app.get('/api/escalas/lote/:ids', verificarTokenWeb, (req, res) => {
-    const idsString = req.params.ids;
-    const idArray = idsString.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-    if (idArray.length === 0) return res.status(400).json({ erro: 'IDs de lote inválidos.' });
-    const placeholders = idArray.map((_, i) => `$${i + 1}`).join(',');
-    
-    const query = `
-        SELECT e.*, u.nome_unidade, u.rua, u.cidade 
-        FROM escalas e
-        LEFT JOIN unidades u ON e.unidade_id = u.id
-        WHERE e.id IN (${placeholders})
-        ORDER BY e.data_inicio ASC
-    `;
-    db.all(query.replace(/\$[0-9]+/g, '?'), idArray, (err, rows) => {
-        if (err) return handleError(res, err, 'Erro ao consultar o lote.');
-        if (!rows || rows.length === 0) return res.status(404).json({ erro: 'Nenhuma vaga encontrada para este lote.' });
-        res.json(rows);
-    });
-});
-
-app.post('/api/escalas/vaga/:id/aceitar', verificarTokenWeb, (req, res) => {
-    if (req.user.tipo !== 'trabalhador') return res.status(403).json({ erro: 'Apenas trabalhadores podem aceitar vagas.' });
-    
-    const escalaId = parseInt(req.params.id, 10);
-    const funcId = parseInt(req.user.id, 10);
-    
-    db.get(`SELECT data_inicio, hora_entrada, data_fim, hora_saida FROM escalas WHERE id = ? AND status_turno = 'Pendente'`, [escalaId], async (err, turno) => {
-        if (err) return handleError(res, err, 'Erro ao verificar a vaga.');
-        if (!turno) return res.status(400).json({ erro: 'Muito lento! A vaga acabou de ser preenchida por outro colega ou foi cancelada.' });
-        
-        const check = await verificarConflito(funcId, turno.data_inicio, turno.hora_entrada, turno.data_fim, turno.hora_saida);
-        if (check.conflito) return res.status(409).json({ erro: 'Bloqueado: Você já tem um turno agendado que se sobrepõe a este horário!' });
-        
-        const queryUpdate = `UPDATE escalas SET funcionario_id = ?, status_turno = 'Agendado' WHERE id = ? AND status_turno = 'Pendente' RETURNING id`;
-        db.get(queryUpdate, [funcId, escalaId], (errUp, row) => {
-            if (errUp) return handleError(res, errUp, 'Erro ao processar aceitação.');
-            if (!row) return res.status(400).json({ erro: 'Muito lento! A vaga acabou de ser preenchida por outro colega.' });
-            res.json({ mensagem: 'Turno aceite e garantido com sucesso!' });
-        });
-    });
-});
-
-app.post('/api/escalas/lote/aceitar', verificarTokenWeb, async (req, res) => {
-    if (req.user.tipo !== 'trabalhador') return res.status(403).json({ erro: 'Apenas trabalhadores podem aceitar vagas.' });
-    
-    const arrayEscalaIds = req.body.ids;
-    const funcId = parseInt(req.user.id, 10);
-    if (!Array.isArray(arrayEscalaIds) || arrayEscalaIds.length === 0) return res.status(400).json({ erro: 'Nenhum turno selecionado no carrinho.' });
-
-    let sucessos = [];
-    let falhas = [];
-
-    for (let id of arrayEscalaIds) {
-        let escalaId = parseInt(id, 10);
-        try {
-            const resultadoIndividual = await new Promise((resolve, reject) => {
-                db.get(`SELECT data_inicio, hora_entrada, data_fim, hora_saida FROM escalas WHERE id = ? AND status_turno = 'Pendente'`, [escalaId], async (err, turno) => {
-                    if (err) return resolve({ sucesso: false, erro: 'Falha na BD.' });
-                    if (!turno) return resolve({ sucesso: false, erro: 'Já preenchido.' });
-                    
-                    const check = await verificarConflito(funcId, turno.data_inicio, turno.hora_entrada, turno.data_fim, turno.hora_saida);
-                    if (check.conflito) return resolve({ sucesso: false, erro: 'Conflito de Horário.' });
-                    
-                    const queryUpdate = `UPDATE escalas SET funcionario_id = ?, status_turno = 'Agendado' WHERE id = ? AND status_turno = 'Pendente' RETURNING id`;
-                    db.get(queryUpdate, [funcId, escalaId], (errUp, row) => {
-                        if (errUp) return resolve({ sucesso: false, erro: 'Erro na Tranca.' });
-                        if (!row) return resolve({ sucesso: false, erro: 'Perdeu a corrida.' });
-                        resolve({ sucesso: true, data: turno.data_inicio }); 
-                    });
-                });
-            });
-
-            if (resultadoIndividual.sucesso) { sucessos.push(resultadoIndividual.data); } 
-            else { falhas.push(resultadoIndividual.erro); }
-        } catch (e) { falhas.push('Erro inesperado.'); }
-    }
-
-    res.json({ mensagem: 'Processamento do Carrinho concluído.', sucessos_qtd: sucessos.length, falhas_qtd: falhas.length, dias_ganhos: sucessos });
-});
-
 app.get('/api/relatorios/agencia/:agencia_id', verificarTokenWeb, (req, res) => { 
-    let sql = `SELECT e.*, f.nome_completo as nome_func, u.nome_unidade, u.rua as morada_unidade, u.cidade as cidade_unidade, c.nome_empresa 
+    // 📍 CORREÇÃO: Extrai os minutos reais realizados para não dar 'Real: - min' no relatório
+    let sql = `SELECT e.*, f.nome_completo as nome_func, u.nome_unidade, u.rua as morada_unidade, u.cidade as cidade_unidade, c.nome_empresa,
+               ROUND(EXTRACT(EPOCH FROM (e.timestamp_fim_pausa - e.timestamp_inicio_pausa))/60) as minutos_pausa_realizados,
+               CASE 
+                 WHEN e.timestamp_inicio_pausa IS NOT NULL AND e.timestamp_fim_pausa IS NULL THEN 'Pausa em Aberto'
+                 WHEN e.timestamp_fim_pausa IS NULL THEN 'Sem Pausa'
+                 WHEN (ROUND(EXTRACT(EPOCH FROM (e.timestamp_fim_pausa - e.timestamp_inicio_pausa))/60) - e.minutos_pausa) > 0 THEN 'Excedido'
+                 WHEN (ROUND(EXTRACT(EPOCH FROM (e.timestamp_fim_pausa - e.timestamp_inicio_pausa))/60) - e.minutos_pausa) < 0 THEN 'Abaixo'
+                 ELSE 'Cumprido' 
+               END as pausa_status_flag
                FROM escalas e 
                LEFT JOIN funcionarios f ON e.funcionario_id = f.id 
                JOIN unidades u ON e.unidade_id = u.id 
@@ -1229,6 +1155,90 @@ app.post('/api/assinaturas/assinar-unidade', verificarTokenWeb, (req, res) => {
 });
 
 app.post('/api/assinaturas/assinar', verificarTokenWeb, (req, res) => { if(req.user.tipo !== 'trabalhador') return res.status(403).json({erro:'Acesso negado'}); const { assinatura_id } = req.body; const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress; const dataHora = new Date().toLocaleString('pt-PT', {timeZone: 'Europe/Lisbon'}); const carimbo = `Assinado digitalmente em ${dataHora} | IP: ${ip}`; db.run(`UPDATE assinaturas_mensais SET status='Assinado', carimbo_digital=? WHERE id=? AND funcionario_id=?`, [carimbo, parseInt(assinatura_id, 10), parseInt(req.user.id, 10)], err => { if(err) return handleError(res, err); res.json({ mensagem: 'Assinatura registada.' }); }); });
+
+app.get('/api/escalas/vaga/:id', verificarTokenWeb, (req, res) => {
+    const escalaId = parseInt(req.params.id, 10);
+    const query = `
+        SELECT e.*, u.nome_unidade, u.rua, u.cidade 
+        FROM escalas e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        WHERE e.id = ?
+    `;
+    db.get(query, [escalaId], (err, row) => {
+        if (err) return handleError(res, err, 'Erro ao consultar a base de dados.');
+        if (!row) return res.status(404).json({ erro: 'Vaga inexistente.', status_turno: 'Fechada' });
+        res.json(row);
+    });
+});
+
+app.get('/api/escalas/lote/:ids', verificarTokenWeb, (req, res) => {
+    const idsString = req.params.ids;
+    const idArray = idsString.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    if (idArray.length === 0) return res.status(400).json({ erro: 'IDs de lote inválidos.' });
+    const placeholders = idArray.map((_, i) => `$${i + 1}`).join(',');
+    
+    const query = `
+        SELECT e.*, u.nome_unidade, u.rua, u.cidade 
+        FROM escalas e
+        LEFT JOIN unidades u ON e.unidade_id = u.id
+        WHERE e.id IN (${placeholders})
+        ORDER BY e.data_inicio ASC
+    `;
+    db.all(query.replace(/\$[0-9]+/g, '?'), idArray, (err, rows) => {
+        if (err) return handleError(res, err, 'Erro ao consultar o lote.');
+        if (!rows || rows.length === 0) return res.status(404).json({ erro: 'Nenhuma vaga encontrada para este lote.' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/escalas/vaga/:id/aceitar', verificarTokenWeb, (req, res) => {
+    if (req.user.tipo !== 'trabalhador') return res.status(403).json({ erro: 'Apenas trabalhadores podem aceitar vagas.' });
+    const escalaId = parseInt(req.params.id, 10);
+    const funcId = parseInt(req.user.id, 10);
+    db.get(`SELECT data_inicio, hora_entrada, data_fim, hora_saida FROM escalas WHERE id = ? AND status_turno = 'Pendente'`, [escalaId], async (err, turno) => {
+        if (err) return handleError(res, err, 'Erro ao verificar a vaga.');
+        if (!turno) return res.status(400).json({ erro: 'Muito lento! A vaga acabou de ser preenchida por outro colega ou foi cancelada.' });
+        const check = await verificarConflito(funcId, turno.data_inicio, turno.hora_entrada, turno.data_fim, turno.hora_saida);
+        if (check.conflito) return res.status(409).json({ erro: 'Bloqueado: Você já tem um turno agendado que se sobrepõe a este horário!' });
+        const queryUpdate = `UPDATE escalas SET funcionario_id = ?, status_turno = 'Agendado' WHERE id = ? AND status_turno = 'Pendente' RETURNING id`;
+        db.get(queryUpdate, [funcId, escalaId], (errUp, row) => {
+            if (errUp) return handleError(res, errUp, 'Erro ao processar aceitação.');
+            if (!row) return res.status(400).json({ erro: 'Muito lento! A vaga acabou de ser preenchida por outro colega.' });
+            res.json({ mensagem: 'Turno aceite e garantido com sucesso!' });
+        });
+    });
+});
+
+app.post('/api/escalas/lote/aceitar', verificarTokenWeb, async (req, res) => {
+    if (req.user.tipo !== 'trabalhador') return res.status(403).json({ erro: 'Apenas trabalhadores podem aceitar vagas.' });
+    const arrayEscalaIds = req.body.ids;
+    const funcId = parseInt(req.user.id, 10);
+    if (!Array.isArray(arrayEscalaIds) || arrayEscalaIds.length === 0) return res.status(400).json({ erro: 'Nenhum turno selecionado no carrinho.' });
+    let sucessos = [];
+    let falhas = [];
+    for (let id of arrayEscalaIds) {
+        let escalaId = parseInt(id, 10);
+        try {
+            const resultadoIndividual = await new Promise((resolve, reject) => {
+                db.get(`SELECT data_inicio, hora_entrada, data_fim, hora_saida FROM escalas WHERE id = ? AND status_turno = 'Pendente'`, [escalaId], async (err, turno) => {
+                    if (err) return resolve({ sucesso: false, erro: 'Falha na BD.' });
+                    if (!turno) return resolve({ sucesso: false, erro: 'Já preenchido.' });
+                    const check = await verificarConflito(funcId, turno.data_inicio, turno.hora_entrada, turno.data_fim, turno.hora_saida);
+                    if (check.conflito) return resolve({ sucesso: false, erro: 'Conflito de Horário.' });
+                    const queryUpdate = `UPDATE escalas SET funcionario_id = ?, status_turno = 'Agendado' WHERE id = ? AND status_turno = 'Pendente' RETURNING id`;
+                    db.get(queryUpdate, [funcId, escalaId], (errUp, row) => {
+                        if (errUp) return resolve({ sucesso: false, erro: 'Erro na Tranca.' });
+                        if (!row) return resolve({ sucesso: false, erro: 'Perdeu a corrida.' });
+                        resolve({ sucesso: true, data: turno.data_inicio }); 
+                    });
+                });
+            });
+            if (resultadoIndividual.sucesso) { sucessos.push(resultadoIndividual.data); } 
+            else { falhas.push(resultadoIndividual.erro); }
+        } catch (e) { falhas.push('Erro inesperado.'); }
+    }
+    res.json({ mensagem: 'Processamento do Carrinho concluído.', sucessos_qtd: sucessos.length, falhas_qtd: falhas.length, dias_ganhos: sucessos });
+});
 
 // ============================================================================
 // 📦 MÓDULO ISOLADO: TO DO 360 (ASSISTENTE PESSOAL DE GESTÃO)
