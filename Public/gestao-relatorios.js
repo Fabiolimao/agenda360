@@ -136,13 +136,20 @@ function processarFiltroRelatorio() {
         return;
     }
 
-    // 📍 FUNÇÃO DE LIMPEZA DE SEGUNDOS
+    // 📍 FUNÇÃO DE LIMPEZA DE SEGUNDOS E HORAS
     const extrairHHMM = (valor) => {
         if (!valor) return null;
         const vStr = String(valor);
         if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
         if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
         return vStr.substring(0, 5);
+    };
+
+    const formatarMinutosParaHHMM = (minutos) => {
+        if (!minutos || isNaN(minutos) || minutos < 0) return "00:00 h";
+        let h = Math.floor(minutos / 60);
+        let m = Math.round(minutos % 60);
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ' h';
     };
 
     escalasFiltradas.forEach(e => {
@@ -180,7 +187,6 @@ function processarFiltroRelatorio() {
         const hInReal = extrairHHMM(e.checkin_real) || '--:--';
         const hOutReal = extrairHHMM(e.checkout_real) || '--:--';
 
-        // 📍 CORREÇÃO DA PAUSA FANTASMA NO EXTRATO
         if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado' || e.status_turno === 'Agendamento Não efetivado') {
             txtHoras = '<span style="color:var(--danger-color); font-weight:bold;">00:00 h</span>';
             estiloLinha = 'style="background: #fef2f2;"';
@@ -195,7 +201,16 @@ function processarFiltroRelatorio() {
             let minOut = hOut * 60 + mOut;
             if (minOut < minIn) minOut += 24 * 60;
             let mTrab = minOut - minIn;
-            if (e.tem_pausa) mTrab -= p;
+            
+            // 📍 A CORREÇÃO DEFINITIVA: Desconta a pausa REAL para mostrar as 08:15h exatas
+            if (e.tem_pausa) {
+                let pausaDeduir = p; // Cai para o previsto apenas se não houver dados reais
+                if (e.minutos_pausa_realizados !== null && e.minutos_pausa_realizados !== undefined) {
+                    pausaDeduir = e.minutos_pausa_realizados; // Aplica os 55 minutos!
+                }
+                mTrab -= Math.max(0, pausaDeduir);
+            }
+            
             if (mTrab > 0) {
                 acumuladorMinutos += mTrab;
                 txtHoras = formatarMinutosParaHHMM(mTrab);
@@ -208,7 +223,8 @@ function processarFiltroRelatorio() {
         tbody.innerHTML += `<tr ${estiloLinha}><td data-label="Localização"><b>${e.nome_empresa}</b><br><small style="color:#64748b;">${e.morada_unidade || '-'}, ${e.cidade_unidade || ''}</small></td><td data-label="Funcionário"><b>${txtNome}</b><br><small style="color:var(--primary-color); font-weight:600;">${e.funcao}</small></td><td data-label="Data">${e.data_inicio}</td><td data-label="Estado"><span style="${corStatus} font-weight:bold;">${e.status_turno}</span></td><td data-label="Entrada Real"><span style="font-size:0.8rem;color:#64748b;">Previsto: ${hInPrev}</span><br>Real: <b>${hInReal}</b></td><td data-label="Saída Real"><span style="font-size:0.8rem;color:#64748b;">Previsto: ${hOutPrev}</span><br>Real: <b>${hOutReal}</b></td><td data-label="Pausa">${txtPausa}</td><td data-label="Horas Efetivas" style="text-align: right; font-weight: bold;">${txtHoras}</td></tr>`;
     });
 
-    document.getElementById('totalHorasRelatorio').innerText = formatarMinutosParaHHMM(acumuladorMinutos);
+    const elTotal = document.getElementById('totalHorasRelatorio');
+    if (elTotal) elTotal.innerText = formatarMinutosParaHHMM(acumuladorMinutos);
 
     if (blocoAss) {
         if (fFunc && fDataIn) {
