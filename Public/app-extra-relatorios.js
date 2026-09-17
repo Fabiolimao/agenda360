@@ -52,11 +52,16 @@ function gerarRelatorioApp() {
     let htmlContainerCartoes = '';
     let htmlNovoCorpoTabelaPrint = '';
 
-    // 📍 MOTOR DE EXTRAÇÃO CIRÚRGICO (Formato Literal, sem Fuso Horário Fantasma)
+    // 📍 MOTORES DE EXTRAÇÃO (Partilhados com a Home para garantir a mesma leitura imune ao Fuso Horário)
     const extrairHHMM = (valor) => {
         if (!valor) return '';
+        if (String(valor).includes('Z') || String(valor).includes('T')) {
+            const dataObj = new Date(valor);
+            if (!isNaN(dataObj)) {
+                return dataObj.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' });
+            }
+        }
         const vStr = String(valor);
-        if (vStr.includes('T')) return vStr.split('T')[1].substring(0, 5);
         if (vStr.includes(' ')) return vStr.split(' ')[1].substring(0, 5);
         return vStr.substring(0, 5);
     };
@@ -90,43 +95,30 @@ function gerarRelatorioApp() {
                 }
             }
 
-            // 📍 ESTRUTURA PADRONIZADA (Variáveis de Pausa Prevista e Real isoladas)
+            // 📍 ESTRUTURA PADRONIZADA DE PREVISTO VS REALIZADO (Turno e Pausa)
             const gpsLog = e.controlo_gps || ''; 
-            
-            // Pausas Reais (GPS)
-            const hasInicioReal = isPausaReal(e.timestamp_inicio_pausa);
-            const hasFimReal = isPausaReal(e.timestamp_fim_pausa);
-            const hIReal = extrairHHMM(e.timestamp_inicio_pausa);
-            const hFReal = extrairHHMM(e.timestamp_fim_pausa);
+            const hasInicioPausa = isPausaReal(e.timestamp_inicio_pausa) || isPausaReal(e.hora_inicio_pausa);
+            const hasFimPausa = isPausaReal(e.timestamp_fim_pausa) || isPausaReal(e.hora_fim_pausa);
+            const hI = extrairHHMM(e.timestamp_inicio_pausa) || extrairHHMM(e.hora_inicio_pausa);
+            const hF = extrairHHMM(e.timestamp_fim_pausa) || extrairHHMM(e.hora_fim_pausa);
 
-            // Pausas Previstas (Agendadas)
-            const hIPrev = extrairHHMM(e.hora_inicio_pausa);
-            const hFPrev = extrairHHMM(e.hora_fim_pausa);
-
-            const turnoPrevisto = `${e.hora_entrada || '--:--'} às ${e.hora_saida || '--:--'}`;
+            const turnoPrevisto = `${extrairHHMM(e.hora_entrada) || '--:--'} às ${extrairHHMM(e.hora_saida) || '--:--'}`;
             let turnoReal = 'A aguardar';
             if (e.checkin_real && e.checkout_real) turnoReal = `${extrairHHMM(e.checkin_real)} às ${extrairHHMM(e.checkout_real)}`;
             else if (e.checkin_real) turnoReal = `Desde as ${extrairHHMM(e.checkin_real)}`;
 
-            const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : 0);
-            
-            // Construção da Pausa Prevista (Idêntica ao Calendário)
-            let txtPausaPrevista = `${pMin} min`;
-            if (hIPrev && hFPrev) {
-                txtPausaPrevista = `${hIPrev} às ${hFPrev} (${pMin} min)`;
-            }
-
+            const pMin = e.minutos_pausa !== undefined ? e.minutos_pausa : (e.minutes_pausa !== undefined ? e.minutes_pausa : '-');
             let estadoPausa = 'A aguardar';
             let bgPausa = '#f1f5f9';
             let corPausa = '#475569';
             const pReal = e.minutos_pausa_realizados !== undefined ? e.minutos_pausa_realizados : '-';
 
             if (e.checkin_real && !e.checkout_real && gpsLog.includes('Pausa Início:')) {
-                estadoPausa = `Em curso (Início: ${hIReal || '--:--'})`;
+                estadoPausa = `Em curso (Início: ${hI})`;
                 bgPausa = '#fef3c7';
                 corPausa = '#b45309';
-            } else if (hasInicioReal && hasFimReal) {
-                estadoPausa = `${hIReal} às ${hFReal} (${pReal} min)`;
+            } else if (hasInicioPausa && hasFimPausa) {
+                estadoPausa = `${hI} às ${hF} (${pReal} min)`;
                 bgPausa = '#f0fdf4';
                 corPausa = '#166534';
             } else if (e.status_turno === 'Concluído' || e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
@@ -143,25 +135,25 @@ function gerarRelatorioApp() {
                     <div style="height:1px; background:#e2e8f0; width:100%;"></div>
                     <div style="background:${bgPausa}; padding:6px 8px; border-radius:6px;">
                         <div style="font-size:0.75rem; color:${corPausa}; font-weight:bold; text-transform:uppercase;">☕ Pausa</div>
-                        <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${txtPausaPrevista}</span></div>
+                        <div style="font-size:0.85rem; color:${corPausa};">Prevista: <span style="font-weight:600;">${pMin} min</span></div>
                         <div style="font-size:0.85rem; color:${corPausa};">Realizada: <span style="font-weight:600;">${estadoPausa}</span></div>
                     </div>
                 </div>
             `;
 
-            // 📍 ETIQUETAS INTELIGENTES DO RELATÓRIO
+            // 📍 ETIQUETAS OFICIAIS DO RELATÓRIO
             let corStatus = 'color:var(--warning-color)';
-            let lblStatus = (typeof e.status_turno === 'string') ? e.status_turno.toUpperCase() : 'AGENDADO';
+            let lblStatus = e.status_turno;
             
-            if (e.status_turno === 'Concluído' || e.status_turno === 'A Aguardar Validação') { 
+            if (lblStatus === 'Concluído' || lblStatus === 'A Aguardar Validação') { 
                 corStatus = 'color:var(--success-color)'; 
-                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_done']) ? dic[curLang]['lbl_done'].toUpperCase() : 'CONCLUÍDO'; 
-            } else if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') { 
+                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_done']) ? dic[curLang]['lbl_done'] : 'Concluído'; 
+            } else if (lblStatus === 'Falta' || lblStatus === 'Cancelado') { 
                 corStatus = 'color:var(--danger-color)'; 
-                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_missed']) ? dic[curLang]['lbl_missed'].toUpperCase() : 'FALTA'; 
-            } else if (e.status_turno === 'Em curso' || (e.checkin_real && !e.checkout_real)) { 
+                lblStatus = (typeof dic !== 'undefined' && dic[curLang] && dic[curLang]['lbl_missed']) ? dic[curLang]['lbl_missed'] : 'Falta'; 
+            } else if (lblStatus === 'Em curso' || (e.checkin_real && !e.checkout_real)) { 
                 corStatus = 'color:var(--info-color, #0ea5e9); font-weight:800;'; 
-                lblStatus = 'EM CURSO ⏳'; 
+                lblStatus = 'Em curso ⏳'; 
             }
 
             htmlContainerCartoes += `
@@ -170,14 +162,14 @@ function gerarRelatorioApp() {
                         <div class="rep-data">📅 Dia ${e.data_inicio.split('-')[2]} (${e.data_inicio})</div>
                         <div class="rep-loc"><b>Local:</b> ${e.nome_unidade} | <b>Função:</b> ${e.funcao}</div>
                         ${painelPadraoHTML}
-                        <div class="rep-status" style="${corStatus}; margin-top: 5px;">ESTADO: ${lblStatus}</div>
+                        <div class="rep-status" style="${corStatus}; margin-top: 5px;">Estado: ${lblStatus}</div>
                     </div>
                     <div class="rep-horas">${txtLinhaHoras}</div>
                 </div>
             `;
 
-            let checkinPrint = e.checkin_real ? `<b>${extrairHHMM(e.checkin_real)}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${e.hora_entrada}</span>`;
-            let checkoutPrint = e.checkout_real ? `<b>${extrairHHMM(e.checkout_real)}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${e.hora_saida}</span>`;
+            let checkinPrint = e.checkin_real ? `<b>${extrairHHMM(e.checkin_real)}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${extrairHHMM(e.hora_entrada)}</span>`;
+            let checkoutPrint = e.checkout_real ? `<b>${extrairHHMM(e.checkout_real)}</b>` : `<span style="font-size:7pt; color:#64748b;">Previsto:<br>${extrairHHMM(e.hora_saida)}</span>`;
             let txtPausaPrint = e.tem_pausa ? `<span style="color:#b45309;">${p} min</span>` : '<span style="color:#94a3b8;">Sem Pausa</span>';
 
             if (e.status_turno === 'Falta' || e.status_turno === 'Cancelado') {
@@ -620,12 +612,21 @@ async function testarFolhaACT() {
                         totEfetivas += d.efetivo_horas || 0;
                         
                         var detalheFormatado = d.detalhe;
-                        if (d.detalhe === '-') detalheFormatado = (d.tipo === 'F') ? 'Folga' : d.tipo;
+                        if (d.tipo === 'F') {
+                            detalheFormatado = 'Folga';
+                        } else if (d.detalhe && d.detalhe.indexOf('-') !== -1) {
+                            var pts = d.detalhe.split('-');
+                            var inClean = pts[0].trim().substring(0, 5);
+                            var outClean = pts[1].trim().substring(0, 5);
+                            detalheFormatado = inClean + ' - ' + outClean;
+                        } else if (d.detalhe === '-') {
+                            detalheFormatado = d.tipo;
+                        }
 
                         var txtPausa = '00:00';
                         
-                        // 📍 CORREÇÃO DA "PAUSA FANTASMA": Só calcula pausa local se for Turno Normal
-                        if (d.tipo !== 'F' && d.tipo !== 'Falta' && d.tipo !== 'Cancelado' && d.detalhe && d.detalhe.indexOf('-') !== -1) {
+                        // 📍 CORREÇÃO DA "PAUSA FANTASMA": Só calcula pausa local se for Turno Normal com Horas
+                        if (d.efetivo_horas > 0 && d.detalhe && d.detalhe.indexOf('-') !== -1) {
                             var pts = d.detalhe.split('-');
                             if (pts.length === 2) {
                                 var inParts = pts[0].trim().split(':');
@@ -780,6 +781,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(typeof aplicarNomesUI === 'function') aplicarNomesUI();
             if(typeof mostrarTela === 'function') mostrarTela('screenDashboard');
             if(typeof carregarDadosServidor === 'function') carregarDadosServidor();
+            // 📍 Comando duplicado e obsoleto removido para focar a ação na Folha ACT
+            // if (typeof verificarAssinaturasPendentes === 'function') verificarAssinaturasPendentes();
         }
     }
 });
